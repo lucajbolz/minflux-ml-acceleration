@@ -6,6 +6,19 @@ datasets/
 models/xgboost_ultimate.pkl
 models/random_forest_fast.pkl
 
+# Presentation files (not for GitHub)
+presentation_plots/
+*_presentation.pptx
+MINFLUX_ML_Presentation.pptx
+create_presentation.py
+create_presentation_plots.py
+create_scientific_plots.py
+rmse_comparison.png
+speed_comparison.png
+validation_by_distance.png
+uncertainty_*.png
+uq_*.log
+
 # IDE and misc
 .scat
 *.code-workspace

@@ -171,6 +171,48 @@ distance = estimator.predict(photons, positions)
 print(f"Estimated distance: {distance:.2f} nm")
 ```
 
+### Uncertainty Quantification
+
+Models support optional uncertainty quantification via conformal prediction (90% confidence intervals):
+
+```python
+from ml_inference import MINFLUXDistanceEstimator
+
+# Load model with uncertainty quantification
+estimator = MINFLUXDistanceEstimator('models/xgboost_dynamic.pkl',
+                                      use_uncertainty=True)
+
+# Single prediction with 90% confidence interval
+distance, lower, upper = estimator.predict(photons, positions)
+print(f"Distance: {distance:.2f} nm")
+print(f"90% CI:   [{lower:.2f}, {upper:.2f}] nm")
+print(f"Interval width: {upper - lower:.2f} nm")
+
+# Batch predictions with uncertainty
+distances, lower_bounds, upper_bounds = estimator.predict_batch(photons_batch,
+                                                                  positions_batch)
+```
+
+**How it works:**
+- Uses MAPIE (Model Agnostic Prediction Interval Estimator) with split conformal regression
+- Calibrated on independent calibration set (15% of data)
+- Provides distribution-free coverage guarantees
+- Empirical coverage: ~90.1% (matches theoretical target)
+
+**Calibration:**
+```bash
+# Calibrate uncertainty quantification for dynamic model
+python ml_uncertainty_quantification.py --model dynamic
+
+# Calibrate for static model
+python ml_uncertainty_quantification.py --model static
+```
+
+**Performance:**
+- Dynamic model: Mean interval width ~9.5nm, Coverage: 90.1%
+- Static model: Mean interval width ~11.2nm, Coverage: 89.8%
+- Minimal computational overhead (~0.01ms additional latency)
+
 ### Model Selection
 
 | Use Case | Model | File |
@@ -268,7 +310,11 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 
 3. **Photon Budget Dependency**: Models assume photon counts similar to training data (~84 photons for Static, ~198 for Dynamic). Significantly different photon budgets may reduce accuracy.
 
-4. **Uncertainty Quantification**: Unlike MLE, ML models do not provide confidence intervals or uncertainty estimates without additional techniques (e.g., conformal prediction).
+4. **Systematic Bias**: Models exhibit regression-to-mean behavior, particularly for distances far from the most common training values (20nm for Dynamic model). This results in:
+   - 15nm measurements: +3.3nm average error (overestimation)
+   - 20nm measurements: +0.7nm average error (near-optimal)
+   - 30nm measurements: -2.8nm average error (underestimation)
+   - Uncertainty intervals account for this variation but do not correct the bias.
 
 5. **Interpretability**: XGBoost models are less interpretable than physics-based MLE, making it harder to diagnose failure modes.
 
@@ -276,19 +322,22 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 
 ```
 .
-├── README_ML.md                   # This file
-├── requirements.txt               # Exact package versions
+├── README_ML.md                      # This file
+├── requirements.txt                  # Exact package versions
 ├── models/
-│   ├── xgboost_optimized.pkl     # Static model (17MB)
-│   └── xgboost_dynamic.pkl       # Dynamic model (6.5MB)
-├── ml_inference.py               # Inference wrapper with feature engineering
-├── ml_extract_static.py          # Data extraction for Static model
-├── ml_extract_dynamic.py         # Data extraction for Dynamic model
-├── ml_train_static.py            # Training script for Static model
-├── ml_train_dynamic.py           # Training script for Dynamic model
-├── lib/                          # Original MINFLUX simulation library
-├── src/                          # Original MINFLUX source code
-└── datasets/                     # (Not included) Download from Zenodo
+│   ├── xgboost_optimized.pkl        # Static model (17MB)
+│   ├── xgboost_dynamic.pkl          # Dynamic model (6.5MB)
+│   ├── mapie_static.pkl             # UQ model for Static (calibrated)
+│   └── mapie_dynamic.pkl            # UQ model for Dynamic (calibrated)
+├── ml_inference.py                  # Inference wrapper with UQ support
+├── ml_extract_static.py             # Data extraction for Static model
+├── ml_extract_dynamic.py            # Data extraction for Dynamic model
+├── ml_train_static.py               # Training script for Static model
+├── ml_train_dynamic.py              # Training script for Dynamic model
+├── ml_uncertainty_quantification.py # UQ calibration via conformal prediction
+├── lib/                             # Original MINFLUX simulation library
+├── src/                             # Original MINFLUX source code
+└── datasets/                        # (Not included) Download from Zenodo
     ├── MINFLUXStatic/
     └── MINFLUXDynamic/
 ```
