@@ -36,7 +36,7 @@ The models demonstrate that ML can achieve near-MLE accuracy at a fraction of th
 ### Data Sources
 
 Training data is derived from the MINFLUX simulation framework:
-- **Original Framework**: Hensel et al., *bioRxiv* 2024.01.24.576982 ([DOI](https://doi.org/10.1101/2024.01.24.576982))
+- **Original Framework**: Hensel et al., *Nature Physics* (2024) ([DOI](https://www.nature.com/articles/s41567-024-02760-1))
 - **Simulation Data**: Available on Zenodo ([DOI](https://doi.org/10.5281/zenodo.10625021))
 
 **Static Data** (MINFLUXStatic):
@@ -297,7 +297,7 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 
 ### Original MINFLUX Work
 
-Hensel, T. et al. *Diffraction minima resolve point scatterers at tiny fractions (1/80) of the wavelength*. bioRxiv (2024). [DOI: 10.1101/2024.01.24.576982](https://doi.org/10.1101/2024.01.24.576982)
+Hensel, T. et al. *Diffraction minima resolve point scatterers at tiny fractions (1/80) of the wavelength*. Nature Physics (2024). [DOI: 10.1038/s41567-024-02760-1](https://www.nature.com/articles/s41567-024-02760-1)
 
 ### Data Availability
 
@@ -328,9 +328,9 @@ And the original MINFLUX work:
 @article{hensel2024diffraction,
   title={Diffraction minima resolve point scatterers at tiny fractions (1/80) of the wavelength},
   author={Hensel, Thomas and others},
-  journal={bioRxiv},
+  journal={Nature Physics},
   year={2024},
-  doi={10.1101/2024.01.24.576982}
+  doi={10.1038/s41567-024-02760-1}
 }
 ```
 
