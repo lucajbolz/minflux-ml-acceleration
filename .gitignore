@@ -5,7 +5,6 @@ datasets/
 # Large experimental models (too large for GitHub)
 models/xgboost_ultimate.pkl
 models/random_forest_fast.pkl
-models/xgboost_optimized.pkl
 
 # IDE and misc
 .scat

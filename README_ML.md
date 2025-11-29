@@ -5,8 +5,8 @@
 This repository provides a machine learning extension to the [MINFLUX simulation framework](https://doi.org/10.1101/2024.01.24.576982) that accelerates distance estimation by up to 512× while maintaining near-MLE (Maximum Likelihood Estimation) accuracy. The standard MINFLUX method uses computationally expensive MLE (~100ms per measurement), which limits real-time applications. This work presents two XGBoost-based regression models that achieve comparable accuracy in ~0.2ms, enabling real-time MINFLUX analysis at ~5000 measurements/second.
 
 **Key Results:**
-- Static model: 9.07nm RMSE at 0.17ms (576× speedup)
-- Dynamic model: 5.12nm RMSE at 0.20ms (512× speedup, baseline MLE: 4.24nm)
+- Static model: 5.13nm RMSE at 0.17ms (588× speedup)
+- Dynamic model: 5.12nm RMSE at 0.20ms (500× speedup, baseline MLE: 4.24nm)
 - Validated on 15 experimental traces from published MINFLUX data
 
 ## Table of Contents
@@ -175,7 +175,7 @@ print(f"Estimated distance: {distance:.2f} nm")
 
 | Use Case | Model | File |
 |----------|-------|------|
-| Single-position measurements | Static | `models/xgboost_mse.pkl` |
+| Single-position measurements | Static | `models/xgboost_optimized.pkl` |
 | Time-series traces | Dynamic | `models/xgboost_dynamic.pkl` |
 
 **Decision rule**: Use Dynamic model for sequential measurements with potential temporal correlations, Static model for independent measurements.
@@ -211,10 +211,10 @@ Output: Trained models saved to `models/` directory with performance metrics.
 ### Expected Training Results
 
 **Static Model**:
-- Test RMSE: 9.07nm
-- Test MAE: 7.12nm
-- Training samples: 9,735,600
-- Test samples: 2,433,900
+- Test RMSE: 5.13nm
+- Test MAE: 4.15nm
+- Training samples: 900,000
+- Test samples: 100,000
 
 **Dynamic Model**:
 - Test RMSE: 2.84nm (on held-out test set)
@@ -241,8 +241,8 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 | Method | RMSE (nm) | Inference Time | Speedup | Measurements/sec |
 |--------|-----------|----------------|---------|------------------|
 | MLE (baseline) | 4.24 | 100ms | 1× | 10 |
-| **Dynamic ML** | **5.12** | **0.20ms** | **512×** | **5,000** |
-| Static ML | 9.07 | 0.17ms | 576× | 5,880 |
+| **Dynamic ML** | **5.12** | **0.20ms** | **500×** | **5,000** |
+| **Static ML** | **5.13** | **0.17ms** | **588×** | **5,880** |
 
 ### System Requirements
 
@@ -279,7 +279,7 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 ├── README_ML.md                   # This file
 ├── requirements.txt               # Exact package versions
 ├── models/
-│   ├── xgboost_mse.pkl           # Static model (3.2MB)
+│   ├── xgboost_optimized.pkl     # Static model (17MB)
 │   └── xgboost_dynamic.pkl       # Dynamic model (6.5MB)
 ├── ml_inference.py               # Inference wrapper with feature engineering
 ├── ml_extract_static.py          # Data extraction for Static model

@@ -11,8 +11,8 @@ The standard MINFLUX method uses Maximum Likelihood Estimation (MLE) which is co
 | Method | RMSE (nm) | Inference Time | Speedup | Measurements/sec |
 |--------|-----------|----------------|---------|------------------|
 | MLE (baseline) | 4.24 | 100ms | 1× | 10 |
-| **Dynamic ML** | **5.12** | **0.20ms** | **512×** | **5,000** |
-| Static ML | 9.07 | 0.17ms | 576× | 5,880 |
+| **Dynamic ML** | **5.12** | **0.20ms** | **500×** | **5,000** |
+| **Static ML** | **5.13** | **0.17ms** | **588×** | **5,880** |
 
 ### Quick Start
 
@@ -57,7 +57,7 @@ The original simulation framework (`lib/`, `src/`) is included in this repositor
 ├── README_ML.md                   # Complete documentation
 ├── requirements.txt               # Python dependencies
 ├── models/
-│   ├── xgboost_mse.pkl           # Static model (3.2MB)
+│   ├── xgboost_optimized.pkl     # Static model (17MB)
 │   └── xgboost_dynamic.pkl       # Dynamic model (6.5MB)
 ├── ml_inference.py               # Inference wrapper
 ├── ml_extract_static.py          # Static data extraction

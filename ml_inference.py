@@ -2,9 +2,9 @@
 MINFLUX ML Inference - Drop-in Replacement for MLE
 
 Usage:
-    from minflux_ml_inference import MINFLUXDistanceEstimator
+    from ml_inference import MINFLUXDistanceEstimator
 
-    estimator = MINFLUXDistanceEstimator('models/xgboost_mse.pkl')
+    estimator = MINFLUXDistanceEstimator('models/xgboost_optimized.pkl')
 
     # Single prediction
     distance = estimator.predict(photons, positions)
@@ -13,9 +13,9 @@ Usage:
     distances = estimator.predict_batch(photons_batch, positions_batch)
 
 Performance:
-    - RMSE: 5.70nm (vs MLE: 4.24nm)
+    - RMSE: 5.13nm (vs MLE: 4.24nm)
     - Speed: 0.17ms (vs MLE: ~100ms)
-    - Speedup: 581x faster
+    - Speedup: 588x faster
 """
 
 import numpy as np
@@ -27,10 +27,10 @@ class MINFLUXDistanceEstimator:
     """
     ML-based MINFLUX distance estimator.
 
-    Drop-in replacement for MLE with 581x speedup.
+    Drop-in replacement for MLE with 588x speedup.
     """
 
-    def __init__(self, model_path='models/xgboost_mse.pkl'):
+    def __init__(self, model_path='models/xgboost_optimized.pkl'):
         """
         Initialize the estimator.
 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     print("="*70)
 
     # Load estimator
-    estimator = MINFLUXDistanceEstimator('models/xgboost_mse.pkl')
+    estimator = MINFLUXDistanceEstimator('models/xgboost_optimized.pkl')
 
     # Example 1: Single prediction
     print("\n[1] Single Prediction:")
