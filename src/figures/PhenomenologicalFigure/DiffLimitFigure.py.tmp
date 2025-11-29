@@ -1,0 +1,331 @@
+"""
+Plot description: phenomenological figure for paper: rayleigh ciretrion vs localization with a minimum
+"""
+
+import os
+import argparse
+script_name = os.path.basename(__file__)
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import matplotlib as mpl
+
+from lib.constants import *
+from lib.plotting.style import Style
+from lib.plotting.artefacts import Figures
+
+import pylustrator
+pylustrator.start()
+
+def psf(x,FWHM,a):
+    f = a*np.exp(-4*np.log(2)*x**2/FWHM**2)
+    return f
+
+def doughnut(x,FWHM,a):
+    return a * 4*np.exp(1)*np.log(2)*x**2/FWHM**2 * psf(x,FWHM,1)
+
+def model(dx,phi):
+    """
+    dx and PHI in units of lambda: 0.1 Lambda etc"""
+    DX = dx * 4*np.pi
+    PHI = phi * 4*np.pi + np.pi
+    return .2*(4 + 2*np.sqrt(2*(1+np.cos(DX)))*np.cos(PHI))
+
+def minCRB(dx,l,N,b):
+    """CRB at minimum in units of Lambda"""
+    DX = dx * 2*np.pi
+    L = l * 2*np.pi
+    A = 4+(4-DX**2/2)*(L**2/8-1)
+    sig = np.sqrt(1/N) * np.sqrt((b+A)*A)/(DX *np.abs(L**2/8-1))
+    return sig/2*np.pi
+
+def maxCRB(dx,l,N,b):
+    """CRB at maximum in units of Lambda"""
+    DX = dx * 2*np.pi
+    L = l * 2*np.pi
+    A = 4-(4-DX**2/2)*(L**2/8-1)
+    sig = np.sqrt(1/N) * np.sqrt((b+A)*A)/(dx *np.abs(L**2/8-1))
+    return sig/2*np.pi
+
+from scipy.special import j1
+
+def airy_pattern(x, y, wavelength=1, aperture_diameter=1):
+    k = 2 * np.pi / wavelength
+    r = np.sqrt(x**2 + y**2)
+    theta = k * aperture_diameter / 1 * r
+    pattern = (2 * j1(theta) / theta)**2
+    return pattern / np.max(pattern)
+
+def cum_airy(x, y, d, wavelength=1, NA=0.1):
+    numerical_aperture = NA
+    aperture_diameter = 1.22 * wavelength / numerical_aperture
+    cum = airy_pattern(x-d / 2, y, wavelength=wavelength, aperture_diameter=aperture_diameter)+airy_pattern(x+ d / 2, y, wavelength=wavelength, aperture_diameter=aperture_diameter)
+    return cum / np.sum(cum.flatten())
+
+def airy_do_pattern(x, y, wavelength=1, aperture_diameter=1):
+    k = 2 * np.pi / wavelength
+    r = np.sqrt(x**2 + y**2)
+    theta = k * aperture_diameter / 1 * r
+    pattern = (1/theta)**2 * (2 * j1(theta) / theta)**2
+    return pattern / np.max(pattern)
+
+def cum_airy_do(x, y, d, wavelength=1, NA=0.1):
+    numerical_aperture = NA
+    aperture_diameter = 1.22 * wavelength / numerical_aperture
+    cum = airy_do_pattern(x-d / 2, y, wavelength=wavelength, aperture_diameter=aperture_diameter)+airy_do_pattern(x+d/2, y, wavelength=wavelength, aperture_diameter=aperture_diameter)
+    return cum / np.sum(cum.flatten())
+
+
+def gauss(x,y,FWHM):
+    r = np.sqrt(x**2 + y**2)
+    return psf(r,FWHM,1)
+
+def cum_gauss(x,y,d,FWHM):
+    cum = gauss(x-d/2,y,FWHM) + gauss(x+d/2,y,FWHM)
+    return cum / np.sum(cum.flatten())
+
+def do(x,y,FWHM):
+    r = np.sqrt(x**2 + y**2)
+    return doughnut(r,FWHM,1)
+
+def cum_do(x,y,d,FWHM):
+    cum = do(x-d/2,y,FWHM) + do(x+d/2,y,FWHM)
+    return cum / np.sum(cum.flatten())
+
+
+
+def make_figure(plot_style='nature',color_scheme='default',show=True):
+    s = Style(style=plot_style,color_scheme=color_scheme)
+
+    # Generate data for the Gaussian functions
+    d0 = 0.03
+    d1 = 0.3
+    d2 = 0.4
+    FWHM = 1.
+
+    fig = plt.figure(layout="constrained", figsize=s.get_figsize(cols=4.,rows=4,ratio=1))
+
+    ax = fig.subplot_mosaic(#
+            [
+                ['BLANK','BLANK','BLANK','BLANK','BLANK','BLANK']
+                ,['gauss_close','gauss_far','BLANK','do_close','do_far','BLANK']
+                #,['opt_sys1','opt_sys1','opt_sys2','opt_sys2','BLANK']
+                ,['cum_close_gauss','cum_far_gauss','BLANK','cum_close_do','cum_far_do','cbar1']
+                ,["diff_close_gauss",'diff_far_gauss','BLANK','diff_close_do','diff_far_do','cbar2']
+                ,['BLANK','BLANK','BLANK','BLANK','BLANK','BLANK']
+                ,["max","max",'BLANK','min','min','BLANK']
+                ,["max","max",'BLANK','min','min','BLANK']
+            ]
+        ,empty_sentinel="BLANK"
+        ,gridspec_kw = {
+            #'top':.5
+            #,'bottom':.0
+            #,'left':.1
+            #,"right": 0.5
+            "width_ratios": [1,1,.3,1,1,.05]
+            ,"height_ratios": [.2,.2,1,1,.3,1,1]#.2
+            }
+        ,sharex=False,sharey=False
+        )
+    #fig.tight_layout(pad=3)
+
+    #----------------------------
+    # Add icons for sources
+    ax['gauss_close'].scatter([-d0/2, d0/2], [0.03, 0.03], marker='*',s=100, color=s.c10,zorder=3)
+    ax['gauss_close'].text(0.5, -0.3, f'd={round(d0,2)} FWHM', horizontalalignment='center', verticalalignment='baseline', 
+               transform=ax['gauss_close'].transAxes, fontsize=7, color='black')
+    ax['gauss_far'].scatter([-d1/2, d1/2], [0.03, 0.03], marker='*',s=100, color=s.c20,zorder=3)
+    ax['gauss_far'].text(0.5, -0.3, f'd={round(d1,2)} FWHM', horizontalalignment='center', verticalalignment='baseline', 
+               transform=ax['gauss_far'].transAxes, fontsize=7, color='black')
+    ax['do_close'].scatter([-d0/2, d0/2], [0.03, 0.03], marker='*',s=100, color=s.c10,zorder=3)
+    ax['do_far'].scatter([-d1/2, d1/2], [0.03, 0.03], marker='*',s=100, color=s.c20,zorder=3)
+
+    for key in ['gauss_close','gauss_far','do_close','do_far']:
+        ax[key].set_xticks([-.5,0,.5])
+        ax[key].set_xlabel('x (FWHM)')
+        ax[key].xaxis.set_label_position('top')
+        ax[key].tick_params(top=True, labeltop=True, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    # Cumulative Intensities
+    x = np.linspace(-FWHM,FWHM,40)
+    y = np.linspace(-FWHM,FWHM,40)
+    X,Y = np.meshgrid(x,y)
+    N = 1E6
+
+    density_close_gauss = np.random.poisson(N*cum_gauss(X, Y, d0,FWHM))
+    density_far_gauss = np.random.poisson(N*cum_gauss(X, Y, d1,FWHM))
+    density_close_do = np.random.poisson(N*cum_do(X, Y, d0,FWHM))
+    density_far_do = np.random.poisson(N*cum_do(X, Y, d1,FWHM))
+
+    # Determine the minimum and maximum values for the color scale
+    vmin = min(density_close_gauss.min(), density_far_gauss.min(), density_close_do.min(), density_far_do.min())
+    vmax = max(density_close_gauss.max(), density_far_gauss.max(), density_close_do.max(), density_far_do.max())
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+
+
+    ax['cum_close_gauss'].pcolormesh(X,Y,density_close_gauss,norm=norm,cmap=s.cmap_seq)
+    ax['cum_close_gauss'].text(0.02, 0.95, 'Intensity Image:\n'+r'$I(d\neq 0)$', horizontalalignment='left', verticalalignment='top', 
+               transform=ax['cum_close_gauss'].transAxes,fontsize=7, color='white',fontweight='bold')#
+    ax['cum_far_gauss'].pcolormesh(X,Y,density_far_gauss,norm=norm,cmap=s.cmap_seq)
+    ax['cum_close_do'].pcolormesh(X,Y,density_close_do,norm=norm,cmap=s.cmap_seq)
+    im = ax['cum_far_do'].pcolormesh(X,Y,density_far_do,norm=norm,cmap=s.cmap_seq)
+
+    # Create a colorbar axis
+    cbar = fig.colorbar(im, cax=ax['cbar1'],location='right',drawedges=False,pad=0.0,format=lambda x, _: f"{x:.1f}")
+    cbar.set_ticks([vmin, vmax])  # Set the tick locations
+    cbar.set_ticklabels(['min', 'max'])
+    
+    #divider = make_axes_locatable(ax['cum_far_do'])
+    #cax = divider.append_axes("right", size="5%", pad=0.05)
+    # Create a common colorbar for all plots using the same norm
+    #cbar = plt.colorbar(im, cax=cax)
+    # Optionally set a label for the colorbar
+    #cbar.set_label(r'$I(d\neq 0)$')
+
+    ax['cum_close_gauss'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['cum_far_gauss'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['cum_close_do'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['cum_far_do'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    #--------------------------
+    #Differntial Intensities with respect to zero distance
+    x = np.linspace(-.4*FWHM,.4*FWHM,40)
+    y = np.linspace(-.4*FWHM,.4*FWHM,40)
+    X,Y = np.meshgrid(x,y)
+    N = 1E6
+    # zero-distance intensities
+    zero_g = np.random.poisson(N*cum_gauss(X,Y,1E-5,FWHM))
+    zero_d = np.random.poisson(N*cum_do(X,Y,1E-5,FWHM))
+    # non-zero distance intensities
+    density_close_gauss = np.random.poisson(N*cum_gauss(X, Y, d0,FWHM))
+    density_far_gauss = np.random.poisson(N*cum_gauss(X, Y, d1,FWHM))
+    density_close_do = np.random.poisson(N*cum_do(X, Y, d0,FWHM))
+    density_far_do = np.random.poisson(N*cum_do(X, Y, d1,FWHM))
+    # differential intensities
+    density_close_gauss = density_close_gauss - zero_g
+    density_far_gauss = density_far_gauss - zero_g
+    density_close_do = density_close_do - zero_d
+    density_far_do = density_far_do - zero_d
+
+    # Determine the minimum and maximum values for the color scale
+    vmin = min(density_close_gauss.min(), density_far_gauss.min(), density_close_do.min(), density_far_do.min())
+    vmax = max(density_close_gauss.max(), density_far_gauss.max(), density_close_do.max(), density_far_do.max())
+    vmax = max(np.abs(vmin),np.abs(vmax))
+    norm = colors.Normalize(vmin=-vmax, vmax=vmax)
+    #norm = colors.SymLogNorm(linthresh=0.03, linscale=0.03, vmin=vmin, vmax=vmax, base=10)
+
+
+    ax['diff_close_gauss'].pcolormesh(X,Y,density_close_gauss,cmap=s.cmap_div,norm=norm)
+    ax['diff_close_gauss'].text(0.02, .95, 'Difference Image:\n'+r'$I(d\neq 0)-I(d=0)$', horizontalalignment='left', verticalalignment='top', 
+               transform=ax['diff_close_gauss'].transAxes, color='black',fontweight='bold')#
+    ax['diff_far_gauss'].pcolormesh(X,Y,density_far_gauss,cmap=s.cmap_div,norm=norm)
+    ax['diff_close_do'].pcolormesh(X,Y,density_close_do,cmap=s.cmap_div,norm=norm)
+    im = ax['diff_far_do'].pcolormesh(X,Y,density_far_do,cmap=s.cmap_div,norm=norm)
+
+    ax['cum_close_gauss'].indicate_inset_zoom(ax['diff_close_gauss'],edgecolor='black')
+    ax['cum_far_gauss'].indicate_inset_zoom(ax['diff_far_gauss'],edgecolor='black')
+    ax['cum_close_do'].indicate_inset_zoom(ax['diff_close_do'],edgecolor='black')
+    ax['cum_far_do'].indicate_inset_zoom(ax['diff_far_do'],edgecolor='black')
+
+    #for key in ["diff_close_gauss",'diff_far_gauss','diff_close_do','diff_far_do','cum_close_gauss','cum_far_gauss','cum_close_do','cum_far_do']:
+    #    ax[key].set_aspect('equal')
+
+    # Create a colorbar axis
+    cbar = fig.colorbar(im, cax=ax['cbar2'],location='right',drawedges=False,pad=0.0,format=lambda x, _: f"{x:.1f}",fraction=1.0)
+    cbar.set_ticks([vmin, 0, vmax])  # Set the tick locations
+    cbar.set_ticklabels(['min', '0', 'max'])
+
+    ax['diff_close_gauss'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['diff_far_gauss'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['diff_close_do'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    ax['diff_far_do'].tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    # make axes pretty
+    s.hide_axes(axes=[ax['gauss_close'],ax['gauss_far'],ax['do_close'],ax['do_far']],dirs=['bottom','right','left'])#
+    
+    #--------------------------------------------------------------
+    # Main Panels:
+    x = np.linspace(-1,1,100)
+    #Gaussian
+    mean = psf(x-d0/2,1,1) + psf(x+d0/2,1,1)   
+    var = mean # poisson...
+    sig_m, sig_p = mean-np.sqrt(var)/2, mean+np.sqrt(var)/2
+    sig_m[sig_m<0]=0
+    sig_p[sig_p<0]=0
+    
+    ax['max'].plot(x, mean, label=f'd={round(d0,2)} FWHM',c=s.c10,alpha=1.)
+    ax['max'].plot(x, psf(x-d1/2,1,1) + psf(x+d1/2,1,1), label=f'd={round(d1,2)} FWHM',c=s.c20,alpha=1.)
+    #ax['max'].plot(x, psf(x-d2/2,1,1) + psf(x+d2/2,1,1), label=f'd={round(d2,2)} FWHM',c=s.c30,alpha=1.)
+    ax['max'].fill_between(x, sig_m, sig_p, alpha=0.2,color='gray', label=r'1 $\sigma$ poisson',zorder=-1)
+    ax['max'].scatter([-d0/2, d0/2], [0.03, 0.03], marker='*',s=100, color=s.c10,zorder=3)
+    ax['max'].scatter([-d1/2, d1/2], [0.03, 0.03], marker='*',s=100, color=s.c20,zorder=3)
+    #ax['max'].scatter([-d2/2, d2/2], [0.03, 0.03], marker='*',s=100, color=s.c30,zorder=3)
+    ax['max'].set_xlim(-.5,.5)
+    ax['max'].tick_params(top=False, labeltop=False, bottom=True, labelbottom=True,left=True,labelleft=False,right=False,labelright=False,direction='in')
+    ax['max'].set_xticks([-.5,0,.5])
+    ax['max'].set_ylim(-.05,2.8)
+    ax['max'].set_yticks([-.05,2.8])
+    ax['max'].set_xlabel(r'x (FWHM)')
+    ax['max'].set_ylabel(r'I (a.u.)')
+    ax['max'].legend(bbox_to_anchor=(1.015, 0.06), loc='lower right', frameon=True)
+    
+    axins = ax['max'].inset_axes([0.7, 0.7, 0.3, 0.3])
+    axins.plot(x, psf(x-d1/2,1,1),c=s.c20,alpha=.5,ls='-')
+    axins.plot(x, psf(x+d1/2,1,1),c=s.c20,alpha=.5,ls='-')
+    axins.plot(x, psf(x-d1/2,1,1) + psf(x+d1/2,1,1),c=s.c20)
+    axins.tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    
+    # -----------------------------------------
+    mean = doughnut(x-d0/2,1,1)+doughnut(x+d0/2,1,1)
+    var = mean # poisson...
+    sig_m, sig_p = mean-np.sqrt(var)/2, mean+np.sqrt(var)/2
+    sig_m[sig_m<0]=0
+    sig_p[sig_p<0]=0
+    ax['min'].plot(x, mean, label=f'd={round(d0,2)} FWHM',c=s.c10,alpha=1.)
+    ax['min'].plot(x, doughnut(x-d1/2,1,1)+doughnut(x+d1/2,1,1), label=f'd={round(d1,2)} FWHM',c=s.c20)
+    #ax['min'].plot(x, doughnut(x-d2/2,1,1)+doughnut(x+d2/2,1,1), label=f'd={round(d2,2)} FWHM',c=s.c30,alpha=1.)
+    ax['min'].fill_between(x, sig_m, sig_p, alpha=0.2,color='gray', label=r'1 $\sigma$ poisson')
+    ax['min'].scatter([-d0/2, d0/2], [0.03, 0.03], marker='*',s=100, color=s.c10,zorder=3)#0.11, 0.11
+    ax['min'].scatter([-d1/2, d1/2], [0.03, 0.03], marker='*',s=100, color=s.c20,zorder=3)#0.07, 0.07
+    #ax['min'].scatter([-d2/2, d2/2], [0.03, 0.03], marker='*',s=100, color=s.c30,zorder=3)#0.03, 0.03
+    ax['min'].set_xlim(-.5,.5)
+    ax['min'].set_xticks([-.5,0,.5])
+    ax['min'].set_ylim(-.05,2.8)
+    ax['min'].set_yticks([-.05,2.8])
+    ax['min'].set_xlabel(r'x (FWHM)')
+    ax['min'].tick_params(top=False, labeltop=False, bottom=True, labelbottom=True,left=False,labelleft=False,right=True,labelright=False,direction='in')
+    ax['min'].legend(bbox_to_anchor=(1.015, 0.06), loc='lower right', frameon=True)
+    
+    axins2 = ax['min'].inset_axes([0.7, 0.7, 0.3, 0.3])
+    axins2.plot(x, doughnut(x-d1/2,1,1),ls='-',c=s.c20,alpha=.5)
+    axins2.plot(x, doughnut(x+d1/2,1,1),ls='-',c=s.c20,alpha=.5)
+    axins2.plot(x, doughnut(x-d1/2,1,1)+doughnut(x+d1/2,1,1),c=s.c20)
+    axins2.tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+    
+    s.drop_axes(axes=[ax['max'],ax['min']],dirs=['bottom','left','right'])
+    s.hide_axes(axes=[ax['max'],ax['min']],dirs=['top'])
+    s.hide_axes(axes=[ax['max']],dirs=['right'])
+    s.hide_axes(axes=[ax['min']],dirs=['left'])
+
+    #------------------------------------------------------------------
+    
+
+    #% start: automatic generated code from pylustrator
+    plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
+    import matplotlib as mpl
+    getattr(plt.figure(1), '_pylustrator_init', lambda: ...)()
+    plt.figure(1).text(0.5348, 0.3627, 'Minimum', transform=plt.figure(1).transFigure, fontsize=10.)  # id=plt.figure(1).texts[0].new
+    plt.figure(1).text(0.0555, 0.3627, 'Maximum', transform=plt.figure(1).transFigure, fontsize=10.)  # id=plt.figure(1).texts[1].new
+    plt.figure(1).text(0.0107, 0.9759, 'a', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')  # id=plt.figure(1).texts[2].new
+    plt.figure(1).text(0.4850, 0.9759, 'b', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')  # id=plt.figure(1).texts[3].new
+    plt.figure(1).text(0.0107, 0.4179, 'c', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')  # id=plt.figure(1).texts[4].new
+    plt.figure(1).text(0.4850, 0.4179, 'd', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')  # id=plt.figure(1).texts[5].new
+    #% end: automatic generated code from pylustrator
+    if show:
+        plt.show()
+    return fig
+
+if __name__=='__main__':
+    fig = make_figure(show=True)
+    #Figures().save_fig(fig, 'phenomenological-figure-rayleigh',meta={'generating script': script_name})

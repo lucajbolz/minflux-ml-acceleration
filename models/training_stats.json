@@ -1,0 +1,11 @@
+{
+  "n_epochs": 50,
+  "n_train": 10954336,
+  "n_val": 1217148,
+  "best_val_rmse_nm": 7.535714626312256,
+  "final_val_rmse_nm": 7.538427829742432,
+  "training_time_sec": 7872.00795006752,
+  "n_parameters": 11649,
+  "batch_size": 512,
+  "learning_rate": 0.001
+}

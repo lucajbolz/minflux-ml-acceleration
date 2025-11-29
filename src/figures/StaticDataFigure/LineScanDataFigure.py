@@ -1,0 +1,368 @@
+"""
+Experimental line-scan data.
+
+copyright: @Thomas Hensel, 2023
+"""
+import os
+import argparse
+script_name = os.path.basename(__file__)
+
+import numpy as np
+import seaborn as sns
+import matplotlib
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import scipy.stats as st
+import pandas as pd
+import numpy as np
+
+import lib.utilities as ut
+from lib.plotting.style import Style
+from lib.plotting.artefacts import Figures
+
+import pylustrator
+pylustrator.start()
+
+def corrected_sizes(gt):
+    d=gt
+    if gt == 6:
+        d = 6
+    elif gt == 8:
+        d = 8.4
+    elif gt == 10:
+        d = 10.2
+    elif gt == 12:
+        d = 12
+    elif gt == 15:
+        d = 14.3
+    elif gt == 20:
+        d=20.1
+    elif gt == 25:
+        d = 25
+    elif gt==30:
+        d = 31.8
+    elif gt==40:
+        d = 40.8
+    elif gt==50:
+        d = 50.9
+    elif gt==60:
+        d = 59
+    elif gt==75:
+        d = 74.5
+    elif gt==90:
+        d = 90.7   
+    return d
+
+def remove_outliers(group,key,range=1.5):
+    Q1 = group[key].quantile(0.25)
+    Q3 = group[key].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - range * IQR
+    upper_bound = Q3 + range * IQR
+    return group[(group[key] >= lower_bound) & (group[key] <= upper_bound)]
+def map_labels(legend,map):
+    # method to rename labels in legend
+    for t in legend.texts:
+        if t._text in map.keys():
+            t.set_text(map[t._text])
+    return legend
+
+def calculated_errors(d):
+    if d < 10:
+        err = 1
+    elif d < 30:
+        err = 2
+    elif d < 40:
+        err = 3
+    elif d >= 40:
+        err = 5
+    return [d, d - err, d + err]
+
+def get_errorbands(x):
+    error_bands = [calculated_errors(d) for d in x]
+    # Extract values for plotting
+    x_values = [item[0] for item in error_bands]
+    lower_err_values = [item[1] for item in error_bands]
+    upper_err_values = [item[2] for item in error_bands]
+    return x_values, lower_err_values, upper_err_values
+
+def plotLineScanMin(axis,inset_pos,LineScanDataFrame,style):
+    df = LineScanDataFrame.copy()
+    s = style
+    axis.set_aspect('equal')
+    flierprops = dict(marker='.', markerfacecolor='k', markersize=3,
+                markeredgecolor='none',alpha=.5)
+    boxprops = dict(facecolor=s.c10,edgecolor=s.c10,alpha=1.)
+    medianprops = dict(color = 'k', linewidth = 1.,alpha=1.)
+    whiskerprops = dict(color=s.c10,alpha=1.)
+    capprops = dict(color=s.c10,alpha=1.)
+
+    filtered_df = df.loc[df['method'].isin(['MIN-POLY']) & (~df['error'].apply(lambda x: np.isnan(x)))].groupby(['ground_truth'],group_keys=False)
+
+    grouped_mean_data = filtered_df['d_norm'].agg(list).apply(lambda x:x)
+    mean = grouped_mean_data.to_list()
+    grouped_pos_data = filtered_df['ground_truth'].agg(list).apply(lambda x: np.nanmean(x))
+    pos = grouped_pos_data.to_list()
+    grouped_std_data = filtered_df['d_norm'].agg(list).apply(lambda x: np.nanstd(x))
+    std = grouped_std_data.to_list()
+
+    #sns.boxplot(data=filtered_df.apply(lambda x:x), x="ground_truth", y="d_norm",ax=ax['c'], showmeans=False, boxprops=boxprops, medianprops=medianprops, flierprops=flierprops, whiskerprops=whiskerprops, capprops=capprops)
+    boxplot = axis.boxplot(mean, positions=pos, notch=False, widths=len(pos)*[1.5], showmeans=False, meanline=True,patch_artist=True, boxprops=boxprops, medianprops=medianprops, flierprops=flierprops, whiskerprops=whiskerprops, capprops=capprops, manage_ticks=False)    
+    axis.set_xlim(0,100)#2*[1.5]+7*[4.]
+    axis.set_ylim(0,100)
+    axis.set_xticks(np.arange(0,101,20))
+    axis.set_yticks(np.arange(0,101,20))
+    x = np.linspace(0,101,2)
+    axis.plot(x,x,label='Expected Mean',color='k',alpha=.5,zorder=0)
+    x_values, lower_err_values, upper_err_values = get_errorbands(x)
+    axis.fill_between(x_values, lower_err_values, upper_err_values, color=s.c30, alpha=0.6,label='Expected Error',zorder=-1)
+    
+    #----------------------
+    # inset cartoon of minimum
+    x=np.linspace(0,1,100)
+    axins = axis.inset_axes(inset_pos)
+    axins.plot(x,1+0.8*np.cos(x*2*np.pi),color=s.c10)
+    axins.fill_between(x[30:70], -1, (1+0.8*np.cos(x*2*np.pi))[30:70], color=s.c10, alpha=0.4)
+    axins.scatter(.35,0.,marker='*',s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.scatter(.65,0.,marker='*',s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.set_xlim(0,1)
+    axins.set_ylim(-.3,2)
+    axins.tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    axis.set_xlabel('Expected d (nm)')
+    axis.set_ylabel('d (nm)')
+    axis.tick_params(top=True, labeltop=False, bottom=True, labelbottom=True,left=True,labelleft=True,right=True,labelright=False,direction='in')
+    red_patch = mpatches.Patch(color=s.c10, label='Scan (Min)')
+    handles, labels = axis.get_legend_handles_labels()
+    handles += [red_patch]
+    labels += [red_patch._label]
+    axis.legend(handles, labels, bbox_to_anchor=(1.0, .0), loc='lower right', frameon=True)
+    
+    s.hide_axes(axes=[axis],dirs=['top','right'])
+    s.drop_axes(axes=[axis])
+    pass
+
+def plotControl(axis,inset_pos,LineScanDataFrame,style):
+    df = LineScanDataFrame.copy()
+    s = style
+    axis.set_aspect('equal')
+    # ------------------------------------------
+    # correlation between estimate and NALM
+    def get_errs(series):
+        median = series.apply(lambda x:np.nanmedian(x))
+        q25 = series.apply(lambda x: np.nanpercentile(x, 25))
+        q75 = series.apply(lambda x: np.nanpercentile(x, 75))
+        lower_err = median - q25
+        upper_err = q75 - median
+        err = [lower_err,upper_err]
+        return median, err
+
+    filtered_df = df.loc[df['method'].isin(['MIN-POLY']) & (~df['error'].apply(lambda x: np.isnan(x)))].groupby(['ground_truth'],group_keys=False)
+    grouped_est = filtered_df.apply(lambda x: remove_outliers(x,'d_norm',range=4)).groupby(['ground_truth'])['d_norm'].agg(list)
+    y_median, y_errs = get_errs(grouped_est)
+
+    grouped_NALM = filtered_df.apply(lambda x: remove_outliers(x,'d_norm_NALM',range=4)).groupby(['ground_truth'])['d_norm_NALM'].agg(list)
+    x_median, x_errs = get_errs(grouped_NALM)
+    
+    axis.set_xlim(0,100)
+    axis.set_ylim(0,100)
+    axis.errorbar(x_median, y_median, xerr=x_errs, yerr=0, fmt='',capsize=1.,label='Control',linestyle='none',lw=1.,color='k',ecolor='k')
+    axis.errorbar(x_median, y_median, xerr=0, yerr=y_errs, fmt='',capsize=1.,label='Scan (Min)',linestyle='none',lw=1.,color=s.c10,ecolor=s.c10)
+    x = np.linspace(0,100,5)
+    axis.plot(x,x,label='Expected Mean',color='k',alpha=.5,zorder=-1)
+    axis.set_xticks(np.arange(0,101,20))
+    axis.set_yticks(np.arange(0,101,20))
+    axis.set_xlabel('Control d (nm)')
+    axis.set_ylabel('d (nm)')
+    axis.tick_params(top=False, labeltop=False, bottom=True, labelbottom=True,left=True,labelleft=True,right=False,labelright=False,direction='in')
+    axis.legend(bbox_to_anchor=(1., .0), loc='lower right', frameon=True)
+    
+
+    #----------------------
+    # inset cartoon of control
+    x=np.linspace(0,1,100)
+    axins = axis.inset_axes(inset_pos)
+    axins.plot(x,1+0.8*np.cos(x*2*np.pi),color='k')
+    axins.plot(x,.5*(1+np.cos((x-.15)*2*np.pi)),color='k',alpha=.5)
+    axins.scatter(.35,0.,marker='*',s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.scatter(.65,0.,marker='*',s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.set_xlim(0,1)
+    axins.set_ylim(-.3,2)
+    axins.tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    s.hide_axes(axes=[axis],dirs=['top','right'])
+    s.drop_axes(axes=[axis])
+    pass
+
+
+
+def plotViolins(axis,inset_pos,LineScanDataFrame,style):
+    df = LineScanDataFrame.copy()
+    s = style
+    #---------------------------
+    # Panel e: Line-Scan violins
+    filtered_df = df.loc[(df['method'].apply(lambda x: ('HARMONIC' in x)|('MIN-POLY' in x))) & (~df['error'].apply(lambda x: np.isnan(x)))]
+    grouped = filtered_df.groupby(['ground_truth','method'])
+    # Step 3: Apply the remove_outliers function to each group and concatenate the results
+    filtered_df = grouped.apply(lambda x: remove_outliers(x,'error',range=1.5)).reset_index(drop=True)
+    
+    tmp_ax = sns.violinplot(data=filtered_df, x="ground_truth", y="error", hue="method",
+            split=True, inner="quart", linewidth=1,
+            palette={'MIN-POLY':s.c10,'HARMONIC':s.c20},ax=axis,saturation=1.,alpha=.3, trim=True, legend=False)
+
+    #ax['a)'].plot([], [], color=s.c10, label='Minimum')
+    #ax['a)'].plot([], [], color=s.c20, label='Full')
+    delta = 0.05
+    for ii, item in enumerate(axis.collections):
+        if isinstance(item, matplotlib.collections.PolyCollection):
+            item.set_alpha(.8)
+            path, = item.get_paths()
+            vertices = path.vertices
+            if ii % 2:  # -> to right
+                vertices[:, 0] += delta
+            else:  # -> to left
+                vertices[:, 0] -= delta
+    for i, line in enumerate(axis.get_lines()):
+        line.get_path().vertices[:, 0] += delta if i // 3 % 2 else -delta
+    
+    flierprops = dict(marker='.', markerfacecolor='k', markersize=3,
+                markeredgecolor='none')
+    boxprops = dict(facecolor=s.c30,edgecolor='none',alpha=1.,zorder=-1)
+    medianprops = dict(alpha=.0)
+    whiskerprops = dict(alpha=0.0)
+    capprops = dict(alpha=0.0)
+    sns.boxplot(data=filtered_df, x="ground_truth", y="gt_error",ax=axis, showmeans=False, boxprops=boxprops, medianprops=medianprops, flierprops=flierprops, whiskerprops=whiskerprops, capprops=capprops)
+    yellow_patch = mpatches.Patch(color=s.c30, alpha=0.8, label='Expected Error')
+    handles, labels = axis.get_legend_handles_labels()
+    handles += [yellow_patch]
+    labels += [yellow_patch._label]
+    
+    axis.set_ylim(-25,25)
+    axis.set_yticks([-20,-10,0,10,20])
+    tmp_ax.set(xlabel='Expected d (nm)')
+    axis.set_ylabel('Deviation (nm)')
+    axis.tick_params(top=False, labeltop=False, bottom=True, labelbottom=True,left=True,labelleft=True,right=True,labelright=True,direction='in')
+    axis.legend(handles, labels, bbox_to_anchor=(-.01, -.1), loc='lower left',frameon=True)
+    leg = axis.legend_
+    map_dict = {'HARMONIC':'Scan (Full)','MIN-QUAD':'Scan (Min)','MIN-POLY':'Scan (Min)'}
+    axis.legend_ = map_labels(leg,map_dict)
+
+    # inset cartoon: Full
+    x=np.linspace(0,1,100)
+    axins = axis.inset_axes(inset_pos)
+    axins.plot(x,1+0.8*np.cos(x*2*np.pi),color=s.c20)
+    axins.fill_between(x, -1, 1+0.8*np.cos(x*2*np.pi), color=s.c20, alpha=0.2)
+    axins.scatter(.4,0.1,marker='*', s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.scatter(.6,0.1,marker='*', s=100, color=s.c30,edgecolors='k',zorder=5)
+    axins.set_xlim(0,1)
+    axins.set_ylim(-.3,2)
+    axins.tick_params(top=False, labeltop=False, bottom=False, labelbottom=False,left=False,labelleft=False,right=False,labelright=False,direction='in')
+
+    s.hide_axes(axes=[axis],dirs=['top','right'])
+    s.drop_axes(axes=[axis])
+    pass
+
+def make_figure(plot_style='nature',color_scheme='default',show=True):
+
+    s = Style(style=plot_style,color_scheme=color_scheme)
+    base_dir = os.path.split(__file__)[0]
+    
+    file0 = 'line-scan-data'
+    file1 = 'static-minflux-data'
+    
+    # get line-scan data
+    file = ut.BaseFunc().find_files(base_dir+'/data/', lambda file: ut.BaseFunc().match_pattern(file, file0, match='partial'),max_files=1)[0] # load pkl
+    df = pd.read_pickle(file)
+    df['d_norm'] = df['d_norm'].apply(lambda x: np.nanmean(x))
+    df['N_fit'] = df['N_fit'].apply(lambda x: np.nanmean(x))
+    gt = [6,8,10,15,20,30,40,50,60,75,90]
+    gt_error = [1,1,2,2,2,3,5,5,5,5,5]
+    df['gt_error'] = np.nan
+    for d,err in zip(gt,gt_error):
+        df.loc[df['ground_truth']==d,'gt_error'] = err
+        flip_probability = 0.5
+        flip_mask = df.loc[df['ground_truth']==d].sample(frac=flip_probability, replace=True).index
+        df.loc[flip_mask, 'gt_error'] = -df.loc[df['ground_truth']==d].loc[flip_mask, 'gt_error']
+    df.loc[:,'ground_truth'] = df['ground_truth'].map(lambda x: int(x)).copy()
+    df['ground_truth'] = df['ground_truth'].map(corrected_sizes)
+    df['error'] = df['d_norm']-df['ground_truth']
+    df['NALM_error'] = df['d_norm_NALM']-df['ground_truth']
+    df = df.loc[df['ground_truth']>=0.].copy()
+
+    # get static MINFLUX data
+    file = ut.BaseFunc().find_files(base_dir+'/data/', lambda file: ut.BaseFunc().match_pattern(file, file1, match='partial'),max_files=1)[0] # load pkl
+    MINFLUXdf = pd.read_pickle(file)
+    target = 5000
+    unique_targets = MINFLUXdf["chunk_size"].unique()
+    print(f'Available targets: {unique_targets}')
+    if not 5000 in unique_targets:
+        target = max(unique_targets)
+        print(f'Target not available. Switched to target={target}')
+    print(f'Chosen target: {target}')
+    MINFLUXdf = MINFLUXdf.loc[(MINFLUXdf['chunk_size']==target)&(~MINFLUXdf['label'].isin([8.1]))]#leave out batch 8.1 due to miserable quality of minimum during measurement
+    
+    # prepare data
+    MINFLUXdf['gt_error'] = np.nan
+    gt = [6,8,10,15,20,30,40,50,60,75,90]
+    gt_error = [1,1,2,2,2,3,5,5,5,5,5]
+    for d,err in zip(gt,gt_error):
+        MINFLUXdf.loc[MINFLUXdf['gt']==d,'gt_error'] = err
+        flip_probability = 0.5
+        flip_mask = MINFLUXdf.loc[MINFLUXdf['gt']==d].sample(frac=flip_probability, replace=True).index
+        MINFLUXdf.loc[flip_mask, 'gt_error'] = -MINFLUXdf.loc[MINFLUXdf['gt']==d].loc[flip_mask, 'gt_error']
+    MINFLUXdf.loc[:,'gt'] = MINFLUXdf['gt'].map(lambda x: int(x)).copy()
+    MINFLUXdf['gt'] = MINFLUXdf['gt'].map(corrected_sizes)
+    MINFLUXdf['error'] = MINFLUXdf['d_norm']-MINFLUXdf['gt']
+
+
+    fig, ax = plt.subplot_mosaic(
+    [
+        ['BLANK','BLANK']
+        ,['a','b']
+        ,['BLANK','BLANK']
+        ,['c','c']
+     ]#grid
+    ,empty_sentinel="BLANK"
+    ,gridspec_kw = {
+        "width_ratios": [1.,1.]#widths
+        ,"height_ratios": [.1,1,0.1,.5]#heights
+        }
+    ,constrained_layout=True
+    ,figsize=s.get_figsize(rows=1.7,cols=2,ratio=1)#
+    ,sharex=False
+    ,sharey=False
+    )
+
+    inset_pos = [0.01, 0.8, 0.5, 0.2]
+
+    plotLineScanMin(ax['a'],inset_pos,df,s)
+
+    plotControl(ax['b'],inset_pos,df,s)
+
+    plotViolins(ax['c'],[0.7, 0.85, 0.3, 0.2],df,s)
+
+
+    # figure postprocessing and annotation
+    #s.drop_axes(axes=[ax['a'],ax['b'],ax['c'],ax['d'],ax['e']],dirs=['left','bottom','right'])
+    #s.hide_axes(axes=[ax['a'],ax['b'],ax['c'],ax['d'],ax['e']],dirs=['top','right'])
+
+    #% start: automatic generated code from pylustrator
+    plt.figure(1).ax_dict = {ax.get_label(): ax for ax in plt.figure(1).axes}
+    import matplotlib as mpl
+    getattr(plt.figure(1), '_pylustrator_init', lambda: ...)()
+    plt.figure(1).text(0.0107, 0.9605, 'a', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')
+    plt.figure(1).text(0.5260, 0.9605, 'b', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')
+    plt.figure(1).text(0.0107, 0.3487, 'c', transform=plt.figure(1).transFigure, fontsize=15., weight='bold')
+    plt.figure(1).text(0.0865, 0.9400, 'Minimum$\\approx 5\\%$ of det. photons', transform=plt.figure(1).transFigure, )
+    plt.figure(1).text(0.7451, 0.3487, 'Full$\\approx 100\\%$ of det. photons', transform=plt.figure(1).transFigure, )
+    plt.figure(1).text(0.5984, 0.9400, 'Control: bleaching steps', transform=plt.figure(1).transFigure, )
+    plt.figure(1).text(0.6322, 0.9060, 'm=2', transform=plt.figure(1).transFigure, )
+    plt.figure(1).text(0.5984, 0.8656, 'm=1', transform=plt.figure(1).transFigure, )
+    #% end: automatic generated code from pylustrator
+    if show:
+        plt.show()
+    return fig
+
+if __name__=='__main__':
+    fig = make_figure(show=True)
+    #path_to_figure = Figures().save_fig(fig, 'StaticDataFigure',meta={'generating script': script_name})
