@@ -1,10 +1,10 @@
 """
-Extrahiert Trainingsdaten aus den echten Paper-Messungen
+Extracts training data from real paper measurements
 
-Lädt alle parsed.pkl Files aus datasets/MINFLUXStatic/parsed/
-und erstellt einen Trainingsdatensatz mit:
-- X: 6 Photonenwerte pro Messung
-- y: Ground-truth Distanz (aus Verzeichnisnamen)
+Loads all parsed.pkl files from datasets/MINFLUXStatic/parsed/
+and creates a training dataset with:
+- X: 6 photon values + 6 beam positions per measurement  
+- y: Ground-truth distance (from directory names)
 """
 
 import pickle
@@ -16,21 +16,21 @@ import os
 
 def extract_measurements_from_pkl(pkl_path, distance_nm):
     """
-    Extrahiert alle Messungen aus einem parsed.pkl File.
+    Extracts all measurements from a parsed.pkl file.
 
-    WICHTIG: Sortiert die Photonen nach axis und position für Konsistenz!
-    JETZT MIT BEAM POSITIONEN als zusätzliche Features!
+    IMPORTANT: Sorts photons by axis and position for consistency!
+    NOW WITH BEAM POSITIONS as additional features!
 
     Features: [n_x-, pos_x-, n_x0, pos_x0, n_x+, pos_x+,
                n_y-, pos_y-, n_y0, pos_y0, n_y+, pos_y+]
 
     Args:
-        pkl_path: Path zum parsed.pkl File
-        distance_nm: Ground-truth Distanz in nm
+        pkl_path: Path to parsed.pkl file
+        distance_nm: Ground-truth distance in nm
 
     Returns:
-        X: np.array (N, 12) - Photonen + Positionen (sortiert!)
-        y: np.array (N,) - Distanzen
+        X: np.array (N, 12) - Photons + Positions (sorted!)
+        y: np.array (N,) - Distances
     """
     with open(pkl_path, 'rb') as f:
         df = pickle.load(f)
@@ -38,15 +38,15 @@ def extract_measurements_from_pkl(pkl_path, distance_nm):
     X = []
     y = []
 
-    # Gruppiere nach tuple (jede Messung)
+    # Group by tuple (each measurement)
     for tuple_id in df['tuple'].unique():
         measurement = df[df['tuple'] == tuple_id]
 
-        # Sollte 6 Werte haben
+        # Should have 6 values
         if len(measurement) != 6:
             continue
 
-        # Sortiere nach axis (0=x, 1=y) und dann nach position
+        # Sort by axis (0=x, 1=y) and then by position
         measurement_sorted = measurement.sort_values(['axis', 'pos'])
         photons = measurement_sorted['photons'].values
         positions = measurement_sorted['pos'].values
@@ -64,7 +64,7 @@ def extract_measurements_from_pkl(pkl_path, distance_nm):
 
 def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
     """
-    Extrahiert alle Paper-Daten.
+    Extracts all paper data.
 
     Returns:
         X: np.array (N, 6)
@@ -72,7 +72,7 @@ def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
     """
 
     print("="*70)
-    print("PAPER-DATEN EXTRAKTION")
+    print("PAPER DATA EXTRACTION")
     print("="*70)
 
     X_all = []
@@ -80,26 +80,26 @@ def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
 
     data_path = Path(data_dir)
 
-    # Finde alle Distanz-Verzeichnisse
+    # Find all distance directories
     distance_dirs = sorted([d for d in data_path.iterdir() if d.is_dir()])
 
-    print(f"\nGefundene Distanzen: {[d.name for d in distance_dirs]}")
+    print(f"\nFound distances: {[d.name for d in distance_dirs]}")
     print()
 
     stats = {}
 
     for dist_dir in distance_dirs:
-        # Extrahiere Distanz aus Verzeichnisnamen (z.B. "08nm" -> 8.0)
+        # Extract distance from directory name (e.g. "08nm" -> 8.0)
         dist_name = dist_dir.name
         distance_nm = float(dist_name.replace('nm', ''))
 
-        print(f"[{dist_name}] Lade Daten...")
+        print(f"[{dist_name}] Loading data...")
 
-        # Finde alle parsed.pkl Files
+        # Find all parsed.pkl files
         pkl_files = list(dist_dir.rglob('parsed.pkl'))
 
         if len(pkl_files) == 0:
-            print(f"  ⚠️  Keine pkl Files gefunden!")
+            print(f"  ⚠️  No pkl files found!")
             continue
 
         dist_X = []
@@ -111,7 +111,7 @@ def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
                 dist_X.append(X)
                 dist_y.append(y)
             except Exception as e:
-                print(f"  ✗ Fehler bei {pkl_file.name}: {e}")
+                print(f"  ✗ Error at {pkl_file.name}: {e}")
                 continue
 
         if dist_X:
@@ -122,39 +122,39 @@ def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
             y_all.append(dist_y)
 
             stats[dist_name] = len(dist_X)
-            print(f"  ✓ {len(dist_X)} Messungen geladen")
+            print(f"  ✓ {len(dist_X)} measurements loaded")
         else:
-            print(f"  ✗ Keine Messungen geladen")
+            print(f"  ✗ No measurements loaded")
 
-    # Kombiniere alle Distanzen
+    # Combine all distances
     X_all = np.concatenate(X_all, axis=0)
     y_all = np.concatenate(y_all, axis=0)
 
-    # Statistiken
+    # Statistics
     print(f"\n{'='*70}")
-    print("STATISTIKEN")
+    print("STATISTICS")
     print(f"{'='*70}")
-    print(f"\nGesamt: {len(X_all)} Messungen")
-    print(f"\nPro Distanz:")
+    print(f"\nTotal: {len(X_all)} measurements")
+    print(f"\nPer distance:")
     for dist_name, count in stats.items():
-        print(f"  {dist_name}: {count:5d} Messungen")
+        print(f"  {dist_name}: {count:5d} measurements")
 
-    print(f"\nDaten:")
+    print(f"\nData:")
     print(f"  X Shape: {X_all.shape}")
     print(f"  y Shape: {y_all.shape}")
-    print(f"  Distanz Range: [{y_all.min():.1f}, {y_all.max():.1f}] nm")
+    print(f"  Distance range: [{y_all.min():.1f}, {y_all.max():.1f}] nm")
 
-    # Photonen-Statistik
+    # Photon statistics
     total_photons = X_all.sum(axis=1)
-    print(f"\nPhotonen pro Messung:")
+    print(f"\nPhotons per measurement:")
     print(f"  Mean: {total_photons.mean():.1f}")
     print(f"  Median: {np.median(total_photons):.1f}")
     print(f"  Min: {total_photons.min():.0f}")
     print(f"  Max: {total_photons.max():.0f}")
     print(f"  Std: {total_photons.std():.1f}")
 
-    # Zeige Verteilung
-    print(f"\nPhotonen pro Position (Mean):")
+    # Show distribution
+    print(f"\nPhotons per position (Mean):")
     for i in range(6):
         pos_names = ['n_x-', 'n_x0', 'n_x+', 'n_y-', 'n_y0', 'n_y+']
         zero_pct = 100 * (X_all[:, i] == 0).sum() / len(X_all)
@@ -164,7 +164,7 @@ def extract_all_paper_data(data_dir='datasets/MINFLUXStatic/parsed'):
 
 
 def save_paper_data(X, y, output_dir='data', output_name='paper_data'):
-    """Speichert die extrahierten Daten."""
+    """Saves the extracted data."""
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -172,7 +172,7 @@ def save_paper_data(X, y, output_dir='data', output_name='paper_data'):
     np.save(f'{output_dir}/{output_name}_y.npy', y)
 
     print(f"\n{'='*70}")
-    print("✓ DATEN GESPEICHERT")
+    print("✓ DATA SAVED")
     print(f"{'='*70}")
     print(f"  {output_dir}/{output_name}_X.npy")
     print(f"  {output_dir}/{output_name}_y.npy")

@@ -1,10 +1,10 @@
 """
-Extrahiert Trainingsdaten aus MINFLUXDynamic für Trace-Analyse
+Extracts training data from MINFLUXDynamic for trace analysis
 
-Lädt alle parsed.pkl Files aus datasets/MINFLUXDynamic/parsed/raw/
-und erstellt einen Trainingsdatensatz mit:
-- X: 6 Photonenwerte + 6 Positionen pro Messung
-- y: Ground-truth Distanz
+Loads all parsed.pkl files from datasets/MINFLUXDynamic/parsed/raw/
+and creates a training dataset with:
+- X: 6 photon values + 6 positions per measurement
+- y: Ground-truth distance
 """
 
 import pickle
@@ -16,19 +16,19 @@ import argparse
 
 def extract_measurements_from_pkl(pkl_path, distance_nm):
     """
-    Extrahiert alle Messungen aus einem parsed.pkl File.
+    Extracts all measurements from a parsed.pkl file.
 
-    WICHTIG: Sortiert die Photonen nach axis und position für Konsistenz!
+    IMPORTANT: Sorts photons by axis and position for consistency!
     Features: [n_x-, pos_x-, n_x0, pos_x0, n_x+, pos_x+,
                n_y-, pos_y-, n_y0, pos_y0, n_y+, pos_y+]
 
     Args:
-        pkl_path: Path zum parsed.pkl File
-        distance_nm: Ground-truth Distanz in nm
+        pkl_path: Path to parsed.pkl file
+        distance_nm: Ground-truth distance in nm
 
     Returns:
-        X: np.array (N, 12) - Photonen + Positionen (sortiert!)
-        y: np.array (N,) - Distanzen
+        X: np.array (N, 12) - Photons + Positions (sorted!)
+        y: np.array (N,) - Distances
     """
     with open(pkl_path, 'rb') as f:
         df = pickle.load(f)
@@ -36,15 +36,15 @@ def extract_measurements_from_pkl(pkl_path, distance_nm):
     X = []
     y = []
 
-    # Gruppiere nach tuple (jede Messung)
+    # Group by tuple (each measurement)
     for tuple_id in df['tuple'].unique():
         measurement = df[df['tuple'] == tuple_id]
 
-        # Sollte 6 Werte haben
+        # Should have 6 values
         if len(measurement) != 6:
             continue
 
-        # Sortiere nach axis (0=x, 1=y) und dann nach position
+        # Sort by axis (0=x, 1=y) and then by position
         measurement_sorted = measurement.sort_values(['axis', 'pos'])
         photons = measurement_sorted['photons'].values
         positions = measurement_sorted['pos'].values
@@ -62,7 +62,7 @@ def extract_measurements_from_pkl(pkl_path, distance_nm):
 
 def extract_all_dynamic_data(data_dir='datasets/MINFLUXDynamic/parsed/raw'):
     """
-    Extrahiert alle Dynamic-Daten.
+    Extracts all dynamic data.
 
     Returns:
         X: np.array (N, 12)
@@ -70,7 +70,7 @@ def extract_all_dynamic_data(data_dir='datasets/MINFLUXDynamic/parsed/raw'):
     """
 
     print("="*70)
-    print("MINFLUX DYNAMIC - DATEN EXTRAKTION")
+    print("MINFLUX DYNAMIC - DATA EXTRACTION")
     print("="*70)
 
     X_all = []
@@ -78,26 +78,26 @@ def extract_all_dynamic_data(data_dir='datasets/MINFLUXDynamic/parsed/raw'):
 
     data_path = Path(data_dir)
 
-    # Finde alle Distanz-Verzeichnisse
+    # Find all distance directories
     distance_dirs = sorted([d for d in data_path.iterdir() if d.is_dir()])
 
-    print(f"\nGefundene Distanzen: {[d.name for d in distance_dirs]}")
+    print(f"\nFound distances: {[d.name for d in distance_dirs]}")
     print()
 
     stats = {}
 
     for dist_dir in distance_dirs:
-        # Extrahiere Distanz aus Verzeichnisnamen (z.B. "20nm" -> 20.0)
+        # Extract distance from directory name (e.g. "20nm" -> 20.0)
         dist_name = dist_dir.name
         distance_nm = float(dist_name.replace('nm', ''))
 
-        print(f"[{dist_name}] Lade Daten...")
+        print(f"[{dist_name}] Loading data...")
 
-        # Finde alle parsed.pkl Files
+        # Find all parsed.pkl files
         pkl_files = list(dist_dir.rglob('parsed.pkl'))
 
         if len(pkl_files) == 0:
-            print(f"  ⚠️  Keine pkl Files gefunden!")
+            print(f"  ⚠️  No pkl files found!")
             continue
 
         dist_X = []
@@ -109,7 +109,7 @@ def extract_all_dynamic_data(data_dir='datasets/MINFLUXDynamic/parsed/raw'):
                 dist_X.append(X)
                 dist_y.append(y)
             except Exception as e:
-                print(f"  ✗ Fehler bei {pkl_file.name}: {e}")
+                print(f"  ✗ Error at {pkl_file.name}: {e}")
                 continue
 
         if dist_X:
@@ -120,32 +120,32 @@ def extract_all_dynamic_data(data_dir='datasets/MINFLUXDynamic/parsed/raw'):
             y_all.append(dist_y)
 
             stats[dist_name] = len(dist_X)
-            print(f"  ✓ {len(dist_X):,} Messungen geladen")
+            print(f"  ✓ {len(dist_X):,} measurements loaded")
         else:
-            print(f"  ✗ Keine Messungen geladen")
+            print(f"  ✗ No measurements loaded")
 
-    # Kombiniere alle Distanzen
+    # Combine all distances
     X_all = np.concatenate(X_all, axis=0)
     y_all = np.concatenate(y_all, axis=0)
 
-    # Statistiken
+    # Statistics
     print(f"\n{'='*70}")
-    print("STATISTIKEN")
+    print("STATISTICS")
     print(f"{'='*70}")
-    print(f"\nGesamt: {len(X_all):,} Messungen")
-    print(f"\nPro Distanz:")
+    print(f"\nTotal: {len(X_all):,} measurements")
+    print(f"\nPer distance:")
     for dist_name, count in stats.items():
-        print(f"  {dist_name}: {count:7,} Messungen")
+        print(f"  {dist_name}: {count:7,} measurements")
 
-    print(f"\nDaten:")
+    print(f"\nData:")
     print(f"  X Shape: {X_all.shape}")
     print(f"  y Shape: {y_all.shape}")
-    print(f"  Distanz Range: [{y_all.min():.1f}, {y_all.max():.1f}] nm")
+    print(f"  Distance range: [{y_all.min():.1f}, {y_all.max():.1f}] nm")
 
-    # Photonen-Statistik
+    # Photon statistics
     photons = X_all[:, 0::2]
     total_photons = photons.sum(axis=1)
-    print(f"\nPhotonen pro Messung:")
+    print(f"\nPhotons per measurement:")
     print(f"  Mean: {total_photons.mean():.1f}")
     print(f"  Median: {np.median(total_photons):.1f}")
     print(f"  Std: {total_photons.std():.1f}")
@@ -158,16 +158,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str,
                        default='datasets/MINFLUXDynamic/parsed/raw',
-                       help='Verzeichnis mit MINFLUXDynamic Daten')
+                       help='Directory with MINFLUXDynamic data')
     parser.add_argument('--output_name', type=str,
                        default='dynamic_data',
-                       help='Name für Output-Files')
+                       help='Name for output files')
     args = parser.parse_args()
 
-    # Extrahiere Daten
+    # Extract data
     X, y = extract_all_dynamic_data(args.data_dir)
 
-    # Speichere als .npy
+    # Save as .npy
     output_dir = Path('data')
     output_dir.mkdir(exist_ok=True)
 
@@ -178,8 +178,8 @@ if __name__ == '__main__':
     np.save(y_path, y)
 
     print(f"\n{'='*70}")
-    print("ERFOLGREICH GESPEICHERT")
+    print("SUCCESSFULLY SAVED")
     print(f"{'='*70}")
     print(f"\nX: {X_path}")
     print(f"y: {y_path}")
-    print(f"\nBereit für Training!")
+    print(f"\nReady for training!")
