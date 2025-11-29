@@ -1,6 +1,6 @@
 # Machine Learning Acceleration for MINFLUX Distance Estimation
 
-This repository provides a **machine learning extension** to the [MINFLUX simulation framework](https://doi.org/10.1101/2024.01.24.576982) that accelerates distance estimation by up to **512×** while maintaining near-MLE accuracy.
+This repository provides a **machine learning extension** to the [MINFLUX simulation framework](https://www.nature.com/articles/s41567-024-02760-1) that accelerates distance estimation by up to **512×** while maintaining near-MLE accuracy.
 
 ## Quick Overview
 
@@ -42,8 +42,8 @@ print(f"Estimated distance: {distance:.2f} nm")
 
 This project builds upon the MINFLUX simulation framework:
 
-**Publication**: Hensel, T. et al. *Diffraction minima resolve point scattlers at tiny fractions (1/80) of the wavelength*. bioRxiv (2024).
-[![DOI](https://img.shields.io/badge/DOI-10.1101/2024.01.24.576982-b31b1b?logo=arxiv&logoColor=red)](https://doi.org/10.1101/2024.01.24.576982)
+**Publication**: Hensel, T. et al. *Diffraction minima resolve point scattlers at tiny fractions (1/80) of the wavelength*. Nature Physics (2024).
+[![DOI](https://img.shields.io/badge/DOI-10.1038/s41567--024--02760--1-blue)](https://www.nature.com/articles/s41567-024-02760-1)
 
 **Data**: MINFLUX simulation datasets available on Zenodo:
 [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.10625021.svg)](https://doi.org/10.5281/zenodo.10625021)
@@ -89,9 +89,9 @@ If you use this work, please cite both this ML extension and the original MINFLU
 @article{hensel2024diffraction,
   title={Diffraction minima resolve point scatterers at tiny fractions (1/80) of the wavelength},
   author={Hensel, Thomas and others},
-  journal={bioRxiv},
+  journal={Nature Physics},
   year={2024},
-  doi={10.1101/2024.01.24.576982}
+  doi={10.1038/s41567-024-02760-1}
 }
 ```
 
