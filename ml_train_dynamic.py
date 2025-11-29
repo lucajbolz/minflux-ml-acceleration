@@ -1,8 +1,8 @@
 """
-Trainiert XGBoost Modell für MINFLUXDynamic (Trace-Daten)
+Trains XGBoost model for MINFLUXDynamic (trace data)
 
-Separates Modell für Dynamic-Messungen mit höheren Photon-Zahlen
-und ungleichmäßiger Photon-Verteilung.
+Separate model for dynamic measurements with higher photon counts
+and uneven photon distribution.
 """
 
 import numpy as np

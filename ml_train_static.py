@@ -1,7 +1,7 @@
 """
-XGBoost mit PHYSICS-INFORMED LOSS (Poisson wie MLE!)
+XGBoost with PHYSICS-INFORMED LOSS (Poisson like MLE!)
 
-Key Innovation: Nutzt Poisson objective statt MSE → wie Paper's MLE
+Key Innovation: Uses Poisson objective instead of MSE → like paper's MLE
 """
 
 import numpy as np
@@ -14,25 +14,25 @@ print("="*70)
 print("MINFLUX XGBOOST - PHYSICS-INFORMED (Poisson Loss)")
 print("="*70)
 
-# 1. Daten laden (1M für Speed)
-print(f"\n[1] Lade Daten...")
+# 1. Load data (1M for speed)
+print(f"\n[1] Loading data...")
 X_train = np.load('data/paper_data_with_pos_X.npy')
 y_train = np.load('data/paper_data_with_pos_y.npy')
 
-print(f"   Gesamt: X={X_train.shape}, y={y_train.shape}")
+print(f"   Total: X={X_train.shape}, y={y_train.shape}")
 
 # 2. Sample 1M
 n_samples = 1_000_000
-print(f"\n[2] Sample {n_samples:,} für Speed Test...")
+print(f"\n[2] Sample {n_samples:,} for speed test...")
 indices = np.random.RandomState(42).choice(len(X_train), n_samples, replace=False)
 X_train = X_train[indices]
 y_train = y_train[indices]
 
 print(f"   Subset: X={X_train.shape}")
-print(f"   Distanz Range: [{y_train.min():.1f}, {y_train.max():.1f}] nm")
+print(f"   Distance range: [{y_train.min():.1f}, {y_train.max():.1f}] nm")
 
-# 3. Feature Engineering (gleich wie NN)
-print(f"\n[3] Engineered Features (Paper-konform)...")
+# 3. Feature Engineering (same as NN)
+print(f"\n[3] Engineered Features (paper-compliant)...")
 
 photons = X_train[:, 0::2]
 positions = X_train[:, 1::2]
@@ -76,14 +76,14 @@ y_val = y_train[val_idx]
 print(f"   Training: {n_train:,}")
 print(f"   Validation: {n_val:,}")
 
-# 5. XGBoost Training mit VERSCHIEDENEN Objectives
-print(f"\n[5] Trainiere XGBoost Models...")
-print(f"   Vergleiche: reg:squarederror vs count:poisson")
+# 5. XGBoost training with DIFFERENT objectives
+print(f"\n[5] Training XGBoost models...")
+print(f"   Comparing: reg:squarederror vs count:poisson")
 
 results = {}
 
 # 5a. Standard: Squared Error (MSE)
-print(f"\n   [A] XGBoost mit reg:squarederror (Standard MSE)...")
+print(f"\n   [A] XGBoost with reg:squarederror (Standard MSE)...")
 start = time.time()
 xgb_mse = xgb.XGBRegressor(
     objective='reg:squarederror',  # Standard MSE
@@ -106,7 +106,7 @@ rmse_mse_val = np.sqrt(mean_squared_error(y_val, y_pred_mse_val))
 
 print(f"      Train RMSE: {rmse_mse_train:.2f} nm")
 print(f"      Val RMSE:   {rmse_mse_val:.2f} nm")
-print(f"      Zeit: {elapsed_mse:.1f}s")
+print(f"      Time: {elapsed_mse:.1f}s")
 
 results['MSE'] = {
     'train_rmse': rmse_mse_train,
@@ -114,11 +114,11 @@ results['MSE'] = {
     'time': elapsed_mse
 }
 
-# 5b. PHYSICS-INFORMED: Poisson (wie MLE!)
-print(f"\n   [B] XGBoost mit count:poisson (PHYSICS-INFORMED!)...")
+# 5b. PHYSICS-INFORMED: Poisson (like MLE!)
+print(f"\n   [B] XGBoost with count:poisson (PHYSICS-INFORMED!)...")
 start = time.time()
 xgb_poisson = xgb.XGBRegressor(
-    objective='count:poisson',  # POISSON wie MLE!!!
+    objective='count:poisson',  # POISSON like MLE!!!
     n_estimators=200,
     max_depth=8,
     learning_rate=0.1,
@@ -138,7 +138,7 @@ rmse_poisson_val = np.sqrt(mean_squared_error(y_val, y_pred_poisson_val))
 
 print(f"      Train RMSE: {rmse_poisson_train:.2f} nm")
 print(f"      Val RMSE:   {rmse_poisson_val:.2f} nm")
-print(f"      Zeit: {elapsed_poisson:.1f}s")
+print(f"      Time: {elapsed_poisson:.1f}s")
 
 results['Poisson'] = {
     'train_rmse': rmse_poisson_train,
@@ -147,7 +147,7 @@ results['Poisson'] = {
 }
 
 # 5c. Gamma Distribution (alternative physics-informed)
-print(f"\n   [C] XGBoost mit reg:gamma (Alternative Physics)...")
+print(f"\n   [C] XGBoost with reg:gamma (Alternative Physics)...")
 start = time.time()
 xgb_gamma = xgb.XGBRegressor(
     objective='reg:gamma',  # Gamma distribution
@@ -170,7 +170,7 @@ rmse_gamma_val = np.sqrt(mean_squared_error(y_val, y_pred_gamma_val))
 
 print(f"      Train RMSE: {rmse_gamma_train:.2f} nm")
 print(f"      Val RMSE:   {rmse_gamma_val:.2f} nm")
-print(f"      Zeit: {elapsed_gamma:.1f}s")
+print(f"      Time: {elapsed_gamma:.1f}s")
 
 results['Gamma'] = {
     'train_rmse': rmse_gamma_train,
@@ -178,23 +178,23 @@ results['Gamma'] = {
     'time': elapsed_gamma
 }
 
-# 6. Vergleich
+# 6. Comparison
 print(f"\n{'='*70}")
-print("ERGEBNISSE - OBJECTIVE COMPARISON")
+print("RESULTS - OBJECTIVE COMPARISON")
 print(f"{'='*70}")
-print(f"\n{'Method':<20} {'Train RMSE':>12} {'Val RMSE':>12} {'Zeit':>10}")
+print(f"\n{'Method':<20} {'Train RMSE':>12} {'Val RMSE':>12} {'Time':>10}")
 print(f"{'-'*70}")
 for name, res in results.items():
     print(f"{name:<20} {res['train_rmse']:>11.2f}nm {res['val_rmse']:>11.2f}nm {res['time']:>9.1f}s")
 
-# Finde bestes
+# Find best
 best_method = min(results.items(), key=lambda x: x[1]['val_rmse'])
 print(f"\n{'='*70}")
-print(f"✓ BESTES MODEL: {best_method[0]}")
+print(f"✓ BEST MODEL: {best_method[0]}")
 print(f"  Val RMSE: {best_method[1]['val_rmse']:.2f} nm")
 print(f"{'='*70}")
 
-# 7. Feature Importance (bestes Model)
+# 7. Feature Importance (best model)
 print(f"\n[6] Feature Importance (Top 5) - {best_method[0]}:")
 best_model = xgb_poisson if best_method[0] == 'Poisson' else (xgb_gamma if best_method[0] == 'Gamma' else xgb_mse)
 
@@ -208,13 +208,13 @@ top_idx = np.argsort(importances)[::-1][:5]
 for i, idx in enumerate(top_idx):
     print(f"   {i+1}. {feature_names[idx]:12s}: {importances[idx]:.4f}")
 
-# 8. Speichern
-print(f"\n[7] Speichere beste Model...")
+# 8. Save model
+print(f"\n[7] Saving best model...")
 with open(f'models/xgboost_{best_method[0].lower()}.pkl', 'wb') as f:
     pickle.dump(best_model, f)
 print(f"   ✓ models/xgboost_{best_method[0].lower()}.pkl")
 
 print(f"\n{'='*70}")
-print(f"✓ XGBOOST TRAINING ABGESCHLOSSEN!")
-print(f"  Beste Val RMSE: {best_method[1]['val_rmse']:.2f} nm ({best_method[0]})")
+print(f"✓ XGBOOST TRAINING COMPLETE!")
+print(f"  Best Val RMSE: {best_method[1]['val_rmse']:.2f} nm ({best_method[0]})")
 print(f"{'='*70}")
