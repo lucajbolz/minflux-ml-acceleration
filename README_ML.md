@@ -316,9 +316,9 @@ If you use this work, please cite:
 ```bibtex
 @software{minflux_ml_acceleration,
   title={Machine Learning Acceleration for MINFLUX Distance Estimation},
-  author={[Your Name]},
+  author={Bolz, Luca J.},
   year={2024},
-  url={[Repository URL]}
+  url={https://github.com/lucajbolz/minflux-ml-acceleration}
 }
 ```
 
@@ -340,4 +340,4 @@ This project uses the same license as the original MINFLUX simulation framework.
 
 ## Contact
 
-For questions or issues, please open an issue on the GitHub repository or contact [your contact information].
+For questions or issues, please open an issue on the GitHub repository or contact bolz@physik.uni-kiel.de
