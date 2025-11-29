@@ -30,6 +30,12 @@ positions = np.array([6.21, 21.21, 36.21, -34.95, -19.95, -4.95])
 # Predict distance in nanometers
 distance = estimator.predict(photons, positions)
 print(f"Estimated distance: {distance:.2f} nm")
+
+# With uncertainty quantification (90% confidence intervals)
+estimator_uq = MINFLUXDistanceEstimator('models/xgboost_dynamic.pkl',
+                                         use_uncertainty=True)
+distance, lower, upper = estimator_uq.predict(photons, positions)
+print(f"Distance: {distance:.2f} nm [90% CI: {lower:.2f}-{upper:.2f}]")
 ```
 
 ## Documentation
@@ -54,18 +60,21 @@ The original simulation framework (`lib/`, `src/`) is included in this repositor
 
 ```
 .
-├── README_ML.md                   # Complete documentation
-├── requirements.txt               # Python dependencies
+├── README_ML.md                      # Complete documentation
+├── requirements.txt                  # Python dependencies
 ├── models/
-│   ├── xgboost_optimized.pkl     # Static model (17MB)
-│   └── xgboost_dynamic.pkl       # Dynamic model (6.5MB)
-├── ml_inference.py               # Inference wrapper
-├── ml_extract_static.py          # Static data extraction
-├── ml_extract_dynamic.py         # Dynamic data extraction
-├── ml_train_static.py            # Static model training
-├── ml_train_dynamic.py           # Dynamic model training
-├── lib/                          # Original MINFLUX simulation library
-└── src/                          # Original MINFLUX source code
+│   ├── xgboost_optimized.pkl        # Static model (17MB)
+│   ├── xgboost_dynamic.pkl          # Dynamic model (6.5MB)
+│   ├── mapie_static.pkl             # UQ model for Static
+│   └── mapie_dynamic.pkl            # UQ model for Dynamic
+├── ml_inference.py                  # Inference wrapper with UQ support
+├── ml_extract_static.py             # Static data extraction
+├── ml_extract_dynamic.py            # Dynamic data extraction
+├── ml_train_static.py               # Static model training
+├── ml_train_dynamic.py              # Dynamic model training
+├── ml_uncertainty_quantification.py # Uncertainty quantification calibration
+├── lib/                             # Original MINFLUX simulation library
+└── src/                             # Original MINFLUX source code
 ```
 
 ## Installation
