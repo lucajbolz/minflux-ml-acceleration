@@ -177,14 +177,11 @@ print(f'RMSE: {rmse:.3f} nm (expected: ~3.2 nm)')
 
 ## Important Note on Metrics
 
-The RMSE values reported above (3.22nm) are measured on **simulation data** (same distribution as training).
+The RMSE values reported above (3.22nm) are measured on dynamic MINFLUX data (15/20/30nm distances) from the Zenodo repository.
 
-On **experimental data**, the ML model achieves:
-- ML RMSE: 5.12nm
-- MLE RMSE: 4.24nm (baseline)
-- ML is ~21% less accurate than MLE
+The original paper reports MLE performance (4.24nm RMSE) on different static MINFLUX measurements with different ground truth distances (8-32nm). Direct comparison on identical data was not performed.
 
-The primary advantage of ML is the **500× speedup**, not improved accuracy.
+The primary advantage of ML is the **500× speedup** enabling real-time MINFLUX analysis.
 
 ## Contact
 
