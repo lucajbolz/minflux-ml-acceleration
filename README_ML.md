@@ -5,9 +5,11 @@
 This repository provides a machine learning extension to the [MINFLUX simulation framework](https://www.nature.com/articles/s41567-024-02760-1) that accelerates distance estimation by up to 512× while maintaining near-MLE (Maximum Likelihood Estimation) accuracy. The standard MINFLUX method uses computationally expensive MLE (~100ms per measurement), which limits real-time applications. This work presents two XGBoost-based regression models that achieve comparable accuracy in ~0.2ms, enabling real-time MINFLUX analysis at ~5000 measurements/second.
 
 **Key Results:**
-- Static model: 5.13nm RMSE at 0.17ms (588× speedup)
-- Dynamic model: 5.12nm RMSE at 0.20ms (500× speedup, baseline MLE: 4.24nm)
-- Validated on 15 experimental traces from published MINFLUX data
+- **Balanced model**: 3.22nm RMSE on simulation data at 0.2ms (500× speedup)
+- **Experimental validation**: 5.12nm RMSE on real data (vs MLE: 4.24nm)
+- Main advantage: **500× speedup**, enabling real-time analysis
+
+> **Important**: ML is ~21% less accurate than MLE on experimental data. The primary value is the speed improvement, not accuracy.
 
 ## Table of Contents
 
