@@ -175,6 +175,17 @@ print(f'RMSE: {rmse:.3f} nm (expected: ~3.2 nm)')
 "
 ```
 
+## Important Note on Metrics
+
+The RMSE values reported above (3.22nm) are measured on **simulation data** (same distribution as training).
+
+On **experimental data**, the ML model achieves:
+- ML RMSE: 5.12nm
+- MLE RMSE: 4.24nm (baseline)
+- ML is ~21% less accurate than MLE
+
+The primary advantage of ML is the **500× speedup**, not improved accuracy.
+
 ## Contact
 
 For issues with reproducibility, open a GitHub issue or contact: bolz@physik.uni-kiel.de
