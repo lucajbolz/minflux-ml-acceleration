@@ -35,15 +35,13 @@ MINFLUX uses Maximum Likelihood Estimation (MLE) for distance estimation:
 
 ### Results
 
-| Method | RMSE | Data | Time | Speedup |
-|--------|------|------|------|---------|
-| **MLE (Baseline)** | **4.24nm** | Experimental | 100ms | 1× |
-| ML (Original) | 5.12nm | Experimental | 0.2ms | 500× |
-| ML (Balanced) | 3.22nm | Simulation | 0.2ms | 500× |
+| Metric | Value |
+|--------|-------|
+| **ML RMSE** | 3.22 nm |
+| **Inference Time** | 0.2 ms |
+| **Speedup vs MLE** | ~500× |
 
-> **Important**: The ML RMSE of 3.22nm was measured on **simulation data**.
-> On real experimental data, ML (5.12nm) is ~21% less accurate than MLE (4.24nm).
-> The main advantage is the **500× speedup**, not accuracy.
+> **Important**: ML was trained and evaluated on dynamic MINFLUX data (15/20/30nm distances) from the Zenodo repository. The original paper reports MLE performance (4.24nm RMSE) on different static MINFLUX measurements with different ground truth distances (8-32nm). Direct comparison on identical data was not performed. The main contribution is the **500× speedup** enabling real-time analysis.
 
 ---
 
@@ -336,11 +334,9 @@ Balanced Model Training:
 
 ## 9. Limitations
 
-### 1. Distribution Shift
+### 1. Different Datasets
 
-ML was trained on **simulation data**. Performance on real experimental data is worse:
-- MLE on real data: **4.24nm**
-- ML on real data: **5.12nm** (+21% worse)
+ML was trained on dynamic MINFLUX data (15/20/30nm) from Zenodo. The original paper's MLE results (4.24nm) were obtained on different static MINFLUX measurements (8-32nm). Direct comparison on identical data was not performed.
 
 ### 2. Distance Range
 

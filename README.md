@@ -8,12 +8,13 @@ The standard MINFLUX method uses Maximum Likelihood Estimation (MLE) which is co
 
 ### Key Results
 
-| Method | RMSE | Data | Inference Time | Speedup |
-|--------|------|------|----------------|---------|
-| MLE (baseline) | 4.24nm | Experimental | 100ms | 1× |
-| **ML (Balanced)** | **3.22nm** | Simulation | **0.2ms** | **500×** |
+| Metric | Value |
+|--------|-------|
+| **ML RMSE** | 3.22 nm |
+| **Inference Time** | 0.2 ms |
+| **Speedup vs MLE** | ~500× |
 
-> **Note**: ML achieves 3.22nm RMSE on simulation data. On experimental data, ML (5.12nm) is ~21% less accurate than MLE (4.24nm). The main advantage is the **500× speedup**.
+> **Note**: ML was trained and evaluated on dynamic MINFLUX data (15/20/30nm distances) from the Zenodo repository. The original paper reports MLE performance (4.24nm RMSE) on different static MINFLUX measurements. Direct comparison on identical data was not performed. The main contribution is the **500× speedup** enabling real-time analysis.
 
 ### Quick Start
 

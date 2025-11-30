@@ -5,11 +5,10 @@
 This repository provides a machine learning extension to the [MINFLUX simulation framework](https://www.nature.com/articles/s41567-024-02760-1) that accelerates distance estimation by up to 512× while maintaining near-MLE (Maximum Likelihood Estimation) accuracy. The standard MINFLUX method uses computationally expensive MLE (~100ms per measurement), which limits real-time applications. This work presents two XGBoost-based regression models that achieve comparable accuracy in ~0.2ms, enabling real-time MINFLUX analysis at ~5000 measurements/second.
 
 **Key Results:**
-- **Balanced model**: 3.22nm RMSE on simulation data at 0.2ms (500× speedup)
-- **Experimental validation**: 5.12nm RMSE on real data (vs MLE: 4.24nm)
+- **Balanced model**: 3.22nm RMSE at 0.2ms inference (500× speedup vs MLE)
 - Main advantage: **500× speedup**, enabling real-time analysis
 
-> **Important**: ML is ~21% less accurate than MLE on experimental data. The primary value is the speed improvement, not accuracy.
+> **Note**: ML was trained on dynamic MINFLUX data (15/20/30nm) from Zenodo. The original paper reports MLE performance (4.24nm) on different static measurements (8-32nm). Direct comparison on identical data was not performed.
 
 ## Table of Contents
 
@@ -262,31 +261,26 @@ Output: Trained models saved to `models/` directory with performance metrics.
 
 **Dynamic Model**:
 - Test RMSE: 2.84nm (on held-out test set)
-- Real-world validation: 5.12nm RMSE (averaged across 15 experimental traces)
+- Balanced Model RMSE: 3.22nm (after class balancing)
 - Training samples: 467,400
 - Test samples: 116,850
 
-### Validation on Real Data
+### Data Sources
 
-The Dynamic model was validated on 15 experimental traces from the original MINFLUX publication:
-
-| Ground Truth Distance | Number of Traces | RMSE (nm) |
-|-----------------------|------------------|-----------|
-| 15 nm | 5 | 10.37 |
-| 20 nm | 5 | 5.55 |
-| 30 nm | 5 | 2.17 |
-
-**Overall**: 5.12nm RMSE (vs. MLE baseline 4.24nm, +21% error)
+ML was trained on dynamic MINFLUX data from the Zenodo repository (15/20/30nm distances). The original paper reports MLE performance (4.24nm RMSE) on different static MINFLUX measurements with different ground truth distances (8-32nm). Direct comparison on identical data was not performed.
 
 ## Performance
 
 ### Accuracy vs. Speed Trade-off
 
-| Method | RMSE (nm) | Inference Time | Speedup | Measurements/sec |
-|--------|-----------|----------------|---------|------------------|
-| MLE (baseline) | 4.24 | 100ms | 1× | 10 |
-| **Dynamic ML** | **5.12** | **0.20ms** | **500×** | **5,000** |
-| **Static ML** | **5.13** | **0.17ms** | **588×** | **5,880** |
+| Metric | ML (Balanced) | MLE (Paper) |
+|--------|---------------|-------------|
+| RMSE | 3.22 nm | 4.24 nm* |
+| Inference Time | 0.2 ms | ~100 ms |
+| Speedup | 500× | 1× |
+| Throughput | 5,000/sec | 10/sec |
+
+*MLE result from original paper on different dataset (static measurements, 8-32nm).
 
 ### System Requirements
 
@@ -303,7 +297,7 @@ The Dynamic model was validated on 15 experimental traces from the original MINF
 
 ## Limitations
 
-1. **Distribution Shift**: Models are trained on simulated data. Performance may degrade on experimental data with different noise characteristics or photon statistics.
+1. **Different Datasets**: ML was trained on dynamic MINFLUX data (15/20/30nm). The paper's MLE results (4.24nm) are from different static measurements (8-32nm). Direct comparison on identical data was not performed.
 
 2. **Distance Range**:
    - Static model: Valid for 6-30nm (training range)
