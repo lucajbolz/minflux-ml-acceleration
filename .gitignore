@@ -1,3 +1,10 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Original paper data (local only)
+original_paper/
+
 # Data directories (too large for GitHub)
 data/
 datasets/
