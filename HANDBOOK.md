@@ -1,59 +1,59 @@
-# MINFLUX ML - Handbuch
+# MINFLUX ML - Handbook
 
-> **Bachelorarbeit: Machine Learning Acceleration for MINFLUX Distance Estimation**
+> **Bachelor Thesis: Machine Learning Acceleration for MINFLUX Distance Estimation**
 >
 > Luca J. Bolz | 2024
 
 ---
 
-## Inhaltsverzeichnis
+## Table of Contents
 
-1. [Überblick](#1-überblick)
+1. [Overview](#1-overview)
 2. [Installation](#2-installation)
-3. [Schnellstart](#3-schnellstart)
-4. [Modelle](#4-modelle)
-5. [API Referenz](#5-api-referenz)
-6. [Analyse & Ergebnisse](#6-analyse--ergebnisse)
+3. [Quick Start](#3-quick-start)
+4. [Models](#4-models)
+5. [API Reference](#5-api-reference)
+6. [Analysis & Results](#6-analysis--results)
 7. [CLI Tool](#7-cli-tool)
-8. [Reproduzierbarkeit](#8-reproduzierbarkeit)
-9. [Limitationen](#9-limitationen)
-10. [Referenzen](#10-referenzen)
+8. [Reproducibility](#8-reproducibility)
+9. [Limitations](#9-limitations)
+10. [References](#10-references)
 
 ---
 
-## 1. Überblick
+## 1. Overview
 
-### Was ist das?
+### What is this?
 
-Eine Machine-Learning-Erweiterung für die MINFLUX-Nanoskopie, die die Distanzschätzung um **500×** beschleunigt.
+A machine learning extension for MINFLUX nanoscopy that accelerates distance estimation by **500×**.
 
-### Kernproblem
+### Core Problem
 
-MINFLUX verwendet Maximum Likelihood Estimation (MLE) zur Distanzschätzung:
-- **MLE**: ~100ms pro Messung → 10 Messungen/s
-- **ML**: ~0.2ms pro Messung → 5,000 Messungen/s
+MINFLUX uses Maximum Likelihood Estimation (MLE) for distance estimation:
+- **MLE**: ~100ms per measurement → 10 measurements/s
+- **ML**: ~0.2ms per measurement → 5,000 measurements/s
 
-### Ergebnisse
+### Results
 
-| Methode | RMSE | Daten | Zeit | Speedup |
-|---------|------|-------|------|---------|
-| **MLE (Baseline)** | **4.24nm** | Experimentell | 100ms | 1× |
-| ML (Original) | 5.12nm | Experimentell | 0.2ms | 500× |
+| Method | RMSE | Data | Time | Speedup |
+|--------|------|------|------|---------|
+| **MLE (Baseline)** | **4.24nm** | Experimental | 100ms | 1× |
+| ML (Original) | 5.12nm | Experimental | 0.2ms | 500× |
 | ML (Balanced) | 3.22nm | Simulation | 0.2ms | 500× |
 
-> ⚠️ **Wichtig**: Der ML RMSE von 3.22nm wurde auf **Simulationsdaten** gemessen.
-> Auf echten experimentellen Daten ist ML (5.12nm) schlechter als MLE (4.24nm).
-> Der Hauptvorteil ist der **500× Speedup**, nicht die Genauigkeit.
+> **Important**: The ML RMSE of 3.22nm was measured on **simulation data**.
+> On real experimental data, ML (5.12nm) is ~21% less accurate than MLE (4.24nm).
+> The main advantage is the **500× speedup**, not accuracy.
 
 ---
 
 ## 2. Installation
 
-### Voraussetzungen
+### Requirements
 
 - Python 3.9+
-- ~2GB RAM (Inferenz)
-- ~16GB RAM (Training)
+- ~2GB RAM (inference)
+- ~16GB RAM (training)
 
 ### Setup
 
@@ -63,7 +63,7 @@ cd minflux-ml-acceleration
 pip install -r requirements.txt
 ```
 
-### Abhängigkeiten
+### Dependencies
 
 ```
 numpy>=2.0
@@ -76,90 +76,90 @@ matplotlib>=3.8
 
 ---
 
-## 3. Schnellstart
+## 3. Quick Start
 
-### Einfache Vorhersage
+### Basic Prediction
 
 ```python
 import numpy as np
 from ml_inference import MINFLUXDistanceEstimator
 
-# Model laden
+# Load model
 estimator = MINFLUXDistanceEstimator('models/xgboost_balanced.pkl')
 
-# MINFLUX Messung (6 Photonenzahlen + 6 Beam-Positionen)
+# MINFLUX measurement (6 photon counts + 6 beam positions)
 photons = np.array([35, 42, 28, 38, 45, 30])
 positions = np.array([-10, 2, -5, -12, 6, -20])
 
-# Distanz vorhersagen
+# Predict distance
 distance = estimator.predict(photons, positions)
-print(f"Distanz: {distance:.2f} nm")
+print(f"Distance: {distance:.2f} nm")
 ```
 
-### Mit Unsicherheitsquantifizierung
+### With Uncertainty Quantification
 
 ```python
-# Model mit UQ laden
+# Load model with UQ
 estimator = MINFLUXDistanceEstimator('models/xgboost_balanced.pkl',
                                       use_uncertainty=True)
 
-# Vorhersage mit 90% Konfidenzintervall
+# Prediction with 90% confidence interval
 distance, lower, upper = estimator.predict(photons, positions)
-print(f"Distanz: {distance:.2f} nm")
+print(f"Distance: {distance:.2f} nm")
 print(f"90% CI:  [{lower:.2f}, {upper:.2f}] nm")
 ```
 
-### Batch-Verarbeitung
+### Batch Processing
 
 ```python
-# 1000 Messungen auf einmal
+# 1000 measurements at once
 photons_batch = np.random.poisson(40, (1000, 6)).astype(float)
 positions_batch = np.random.uniform(-25, 25, (1000, 6))
 
 distances = estimator.predict_batch(photons_batch, positions_batch)
-print(f"Verarbeitet: {len(distances)} Messungen")
+print(f"Processed: {len(distances)} measurements")
 ```
 
 ---
 
-## 4. Modelle
+## 4. Models
 
-### Verfügbare Modelle
+### Available Models
 
-| Modell | Datei | Anwendung | RMSE (Sim) |
-|--------|-------|-----------|------------|
-| **Balanced** | `xgboost_balanced.pkl` | Empfohlen | 3.22nm |
-| Dynamic | `xgboost_dynamic.pkl` | Zeitreihen | 2.84nm* |
-| Static | `xgboost_optimized.pkl` | Einzelmessungen | 5.13nm |
+| Model | File | Use Case | RMSE (Sim) |
+|-------|------|----------|------------|
+| **Balanced** | `xgboost_balanced.pkl` | Recommended | 3.22nm |
+| Dynamic | `xgboost_dynamic.pkl` | Time series | 2.84nm* |
+| Static | `xgboost_optimized.pkl` | Single measurements | 5.13nm |
 
-*auf Testdaten, nicht experimentell validiert
+*on test data, not experimentally validated
 
-### Balanced Model (Empfohlen)
+### Balanced Model (Recommended)
 
-Das balanced Model korrigiert den systematischen Bias des Original-Modells:
+The balanced model corrects the systematic bias of the original model:
 
-| Distanz | Original RMSE | Balanced RMSE | Verbesserung |
-|---------|---------------|---------------|--------------|
+| Distance | Original RMSE | Balanced RMSE | Improvement |
+|----------|---------------|---------------|-------------|
 | 15nm | 8.24nm | 3.60nm | **+56%** |
 | 20nm | 3.21nm | 2.91nm | +9% |
 | 30nm | 7.24nm | 3.95nm | **+45%** |
 
-### UQ Modelle
+### UQ Models
 
-Für Uncertainty Quantification:
-- `mapie_balanced.pkl` - Für balanced Model
-- `mapie_dynamic.pkl` - Für dynamic Model
-- `mapie_static.pkl` - Für static Model
+For Uncertainty Quantification:
+- `mapie_balanced.pkl` - For balanced model
+- `mapie_dynamic.pkl` - For dynamic model
+- `mapie_static.pkl` - For static model
 
 ---
 
-## 5. API Referenz
+## 5. API Reference
 
 ### MINFLUXDistanceEstimator
 
 ```python
 class MINFLUXDistanceEstimator:
-    """ML-basierte MINFLUX Distanzschätzung."""
+    """ML-based MINFLUX distance estimation."""
 
     def __init__(
         self,
@@ -168,8 +168,8 @@ class MINFLUXDistanceEstimator:
     ) -> None:
         """
         Args:
-            model_path: Pfad zum trainierten XGBoost Model
-            use_uncertainty: Wenn True, 90% Konfidenzintervalle berechnen
+            model_path: Path to trained XGBoost model
+            use_uncertainty: If True, compute 90% confidence intervals
         """
 
     def predict(
@@ -178,11 +178,11 @@ class MINFLUXDistanceEstimator:
         positions: np.ndarray  # Shape: (6,)
     ) -> float | tuple[float, float, float]:
         """
-        Einzelne Vorhersage.
+        Single prediction.
 
         Returns:
-            Ohne UQ: distance (nm)
-            Mit UQ: (distance, lower, upper) in nm
+            Without UQ: distance (nm)
+            With UQ: (distance, lower, upper) in nm
         """
 
     def predict_batch(
@@ -190,44 +190,44 @@ class MINFLUXDistanceEstimator:
         photons: np.ndarray,    # Shape: (n, 6)
         positions: np.ndarray   # Shape: (n, 6)
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Batch-Vorhersage."""
+        """Batch prediction."""
 
     def benchmark(self, n_samples: int = 100) -> dict:
-        """Performance-Benchmark."""
+        """Performance benchmark."""
 ```
 
 ### Feature Engineering
 
-Die Rohdaten (12 Features) werden zu 15 engineered Features transformiert:
+Raw data (12 features) is transformed to 15 engineered features:
 
 1. **Photon Ratios** (6): `p_i / Σp_j`
-2. **Normalized Positions** (6): Z-Score normalisiert
-3. **Modulation Depth** (2): Interferenzmuster-Stärke
+2. **Normalized Positions** (6): Z-score normalized
+3. **Modulation Depth** (2): Interference pattern strength
 4. **Log Total Photons** (1): `log(Σp_j + 1)`
 
 ---
 
-## 6. Analyse & Ergebnisse
+## 6. Analysis & Results
 
-### Generierte Plots
+### Generated Plots
 
-Alle Plots in `analysis/`:
+All plots in `analysis/`:
 
-| Plot | Beschreibung |
-|------|--------------|
-| `error_analysis.png` | Residuen, Scatter, Boxplots |
-| `feature_importance.png` | XGBoost Feature Importance |
-| `uq_calibration.png` | UQ Coverage pro Distanz |
-| `robustness.png` | Photon-Budget & Noise Tests |
-| `speedup_accuracy_tradeoff.png` | Speedup vs Accuracy Kurve |
+| Plot | Description |
+|------|-------------|
+| `error_analysis.png` | Residuals, scatter, boxplots |
+| `feature_importance.png` | XGBoost feature importance |
+| `uq_calibration.png` | UQ coverage per distance |
+| `robustness.png` | Photon budget & noise tests |
+| `speedup_accuracy_tradeoff.png` | Speedup vs accuracy curve |
 
-### Plots generieren
+### Generate Plots
 
 ```bash
 python analysis_comprehensive.py
 ```
 
-### Performance-Vergleich
+### Performance Comparison
 
 ```
 Speedup-Accuracy Tradeoff:
@@ -245,17 +245,17 @@ Speedup-Accuracy Tradeoff:
 
 ## 7. CLI Tool
 
-### Installation
+### Usage
 
-Das CLI ist direkt nutzbar:
+The CLI is directly usable:
 
 ```bash
 python minflux_ml_cli.py <command> [options]
 ```
 
-### Befehle
+### Commands
 
-#### predict - Batch-Vorhersagen
+#### predict - Batch predictions
 
 ```bash
 python minflux_ml_cli.py predict \
@@ -265,7 +265,7 @@ python minflux_ml_cli.py predict \
     --uncertainty
 ```
 
-#### benchmark - Geschwindigkeit testen
+#### benchmark - Test speed
 
 ```bash
 python minflux_ml_cli.py benchmark --samples 1000
@@ -276,7 +276,7 @@ python minflux_ml_cli.py benchmark --samples 1000
 # Speedup vs MLE:     430×
 ```
 
-#### info - Model-Informationen
+#### info - Model information
 
 ```bash
 python minflux_ml_cli.py info --model models/xgboost_balanced.pkl
@@ -284,7 +284,7 @@ python minflux_ml_cli.py info --model models/xgboost_balanced.pkl
 
 ---
 
-## 8. Reproduzierbarkeit
+## 8. Reproducibility
 
 ### Random Seeds
 
@@ -294,35 +294,35 @@ python minflux_ml_cli.py info --model models/xgboost_balanced.pkl
 | Data Sampling | 42 |
 | XGBoost Training | 42 |
 
-### Datenverteilung
+### Data Distribution
 
 ```
 Dynamic Dataset (584,250 Samples):
 ├── 15nm:  24,950 (4.3%)
-├── 20nm: 419,580 (71.8%)  ← Grund für Original-Bias
+├── 20nm: 419,580 (71.8%)  ← Reason for original bias
 └── 30nm: 139,720 (23.9%)
 ```
 
-### Reproduktion
+### Reproduction Steps
 
 ```bash
-# 1. Daten herunterladen (Zenodo)
+# 1. Download data (Zenodo)
 wget https://zenodo.org/record/10625021/files/MINFLUXDynamic.zip
 
-# 2. Features extrahieren
+# 2. Extract features
 python ml_extract_dynamic.py --data_dir datasets/MINFLUXDynamic/parsed/raw
 
-# 3. Balanced Model trainieren
+# 3. Train balanced model
 python ml_train_balanced.py --weight_method inverse --compare
 
-# 4. UQ kalibrieren
+# 4. Calibrate UQ
 python ml_uncertainty_quantification.py --model balanced
 
-# 5. Analyse generieren
+# 5. Generate analysis
 python analysis_comprehensive.py
 ```
 
-### Erwartete Ergebnisse
+### Expected Results
 
 ```
 Balanced Model Training:
@@ -334,54 +334,54 @@ Balanced Model Training:
 
 ---
 
-## 9. Limitationen
+## 9. Limitations
 
 ### 1. Distribution Shift
 
-ML wurde auf **Simulationsdaten** trainiert. Performance auf echten experimentellen Daten ist schlechter:
-- MLE auf echten Daten: **4.24nm**
-- ML auf echten Daten: **5.12nm** (+21% schlechter)
+ML was trained on **simulation data**. Performance on real experimental data is worse:
+- MLE on real data: **4.24nm**
+- ML on real data: **5.12nm** (+21% worse)
 
-### 2. Distanzbereich
+### 2. Distance Range
 
 - Dynamic Model: 15-30nm
 - Static Model: 6-30nm
-- Extrapolation nicht validiert
+- Extrapolation not validated
 
-### 3. Systematischer Bias
+### 3. Systematic Bias
 
-Auch nach Balancing bleibt ein Bias:
-- 15nm: +2.3nm Überschätzung
-- 30nm: -2.5nm Unterschätzung
+Even after balancing, some bias remains:
+- 15nm: +2.3nm overestimation
+- 30nm: -2.5nm underestimation
 
-### 4. Photon-Budget Abhängigkeit
+### 4. Photon Budget Dependency
 
-Trainiert mit:
-- Dynamic: ~198 Photonen/Messung
-- Static: ~84 Photonen/Messung
+Trained with:
+- Dynamic: ~198 photons/measurement
+- Static: ~84 photons/measurement
 
-Bei stark abweichenden Photonenzahlen sinkt die Genauigkeit.
+Accuracy decreases with significantly different photon counts.
 
 ---
 
-## 10. Referenzen
+## 10. References
 
 ### Original MINFLUX Paper
 
 Hensel, T. et al. *Diffraction minima resolve point scatterers at tiny fractions (1/80) of the wavelength*.
 **Nature Physics** (2024). [DOI: 10.1038/s41567-024-02760-1](https://www.nature.com/articles/s41567-024-02760-1)
 
-### Simulationsdaten
+### Simulation Data
 
 Zenodo Repository: [DOI: 10.5281/zenodo.10625021](https://doi.org/10.5281/zenodo.10625021)
 
 ### Software
 
 - XGBoost: Chen & Guestrin, KDD 2016
-- MAPIE: Conformal Prediction für Uncertainty Quantification
+- MAPIE: Conformal Prediction for Uncertainty Quantification
 - NumPy, scikit-learn, pandas, matplotlib
 
-### Zitation
+### Citation
 
 ```bibtex
 @software{bolz2024minflux_ml,
@@ -394,40 +394,40 @@ Zenodo Repository: [DOI: 10.5281/zenodo.10625021](https://doi.org/10.5281/zenodo
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
 .
-├── HANDBOOK.md                      # Dieses Dokument
+├── HANDBOOK.md                      # This document
 ├── README.md                        # Quick Start
-├── README_ML.md                     # Technische Details
-├── REPRODUCIBILITY.md               # Reproduzierbarkeit
+├── README_ML.md                     # Technical details
+├── REPRODUCIBILITY.md               # Reproducibility guide
 ├── requirements.txt                 # Dependencies
 │
-├── ml_inference.py                  # Haupt-API
-├── ml_train_balanced.py             # Balanced Training
-├── ml_uncertainty_quantification.py # UQ Kalibrierung
-├── minflux_ml_cli.py               # CLI Tool
-├── analysis_comprehensive.py        # Analyse-Plots
-├── demo_realtime.py                # Real-Time Demo
-├── example_notebook.ipynb          # Jupyter Beispiel
+├── ml_inference.py                  # Main API
+├── ml_train_balanced.py             # Balanced training
+├── ml_uncertainty_quantification.py # UQ calibration
+├── minflux_ml_cli.py               # CLI tool
+├── analysis_comprehensive.py        # Analysis plots
+├── demo_realtime.py                # Real-time demo
+├── example_notebook.ipynb          # Jupyter example
 │
 ├── models/
-│   ├── xgboost_balanced.pkl        # Empfohlenes Model
-│   ├── xgboost_dynamic.pkl         # Original Dynamic
-│   ├── xgboost_optimized.pkl       # Static Model
-│   ├── mapie_balanced.pkl          # UQ für Balanced
+│   ├── xgboost_balanced.pkl        # Recommended model
+│   ├── xgboost_dynamic.pkl         # Original dynamic
+│   ├── xgboost_optimized.pkl       # Static model
+│   ├── mapie_balanced.pkl          # UQ for balanced
 │   └── ...
 │
-├── analysis/                        # Generierte Plots
+├── analysis/                        # Generated plots
 │   ├── error_analysis.png
 │   ├── feature_importance.png
 │   └── ...
 │
-├── data/                            # Extrahierte Features
-└── lib/                             # Original MINFLUX Code
+├── data/                            # Extracted features
+└── lib/                             # Original MINFLUX code
 ```
 
 ---
 
-**Kontakt**: bolz@physik.uni-kiel.de | GitHub Issues
+**Contact**: bolz@physik.uni-kiel.de | GitHub Issues
