@@ -30,23 +30,33 @@ print(f"Distance: {distance:.2f} nm")
 ## Installation
 
 ```bash
+# 1. Install dependencies
 pip install -r requirements.txt
+
+# 2. Download training data from Zenodo
+# https://zenodo.org/record/10625021
+# Extract to data/ directory:
+#   - data/dynamic_data_X.npy
+#   - data/dynamic_data_y.npy
+
+# 3. Run quick demo
+python quick_demo.py
 ```
 
-## Reproduction
+## Reproduction (Full Training Pipeline)
 
 ```bash
-# 1. Download data (Zenodo)
+# 1. Download raw data from Zenodo
 wget https://zenodo.org/record/10625021/files/MINFLUXDynamic.zip
 unzip MINFLUXDynamic.zip -d datasets/
 
 # 2. Extract features
 python ml_extract_dynamic.py --data_dir datasets/MINFLUXDynamic/parsed/raw
 
-# 3. Train model
+# 3. Train balanced model
 python ml_train_balanced.py
 
-# 4. Analysis
+# 4. Comprehensive analysis
 python analysis_comprehensive.py
 ```
 

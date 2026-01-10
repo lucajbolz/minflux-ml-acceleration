@@ -17,6 +17,7 @@ models/random_forest_fast.pkl
 presentation_plots/
 *_presentation.pptx
 MINFLUX_ML_Presentation.pptx
+PRESENTATION.md
 create_presentation.py
 create_presentation_plots.py
 create_scientific_plots.py
@@ -25,6 +26,14 @@ speed_comparison.png
 validation_by_distance.png
 uncertainty_*.png
 uq_*.log
+
+# Demo GIFs (for presentation only)
+demo_*.gif
+export_gifs.py
+
+# Live demo scripts (presentation only)
+live_demo.py
+live_demo_comparison.py
 
 # IDE and misc
 .scat
@@ -139,9 +148,9 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv.bak/
 ENV/
 env.bak/
-venv.bak/
 
 # Spyder project settings
 .spyderproject
