@@ -21,10 +21,13 @@ PRESENTATION.md
 create_presentation.py
 create_presentation_plots.py
 create_scientific_plots.py
+
+# Generated plots/images
 rmse_comparison.png
 speed_comparison.png
 validation_by_distance.png
 uncertainty_*.png
+demo_realtime_result.png
 uq_*.log
 
 # Demo GIFs (for presentation only)
