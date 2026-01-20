@@ -1,0 +1,666 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[margin=1.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{fancybox}
+\usepackage{mdframed}
+
+% Colors
+\definecolor{mpigreen}{RGB}{0,100,60}
+\definecolor{cardblue}{RGB}{230,240,255}
+\definecolor{cardyellow}{RGB}{255,250,220}
+\definecolor{cardred}{RGB}{255,235,235}
+\definecolor{cardpurple}{RGB}{245,235,255}
+
+% Card styles
+\mdfdefinestyle{karte}{
+    backgroundcolor=cardblue,
+    roundcorner=5pt,
+    linewidth=1pt,
+    linecolor=mpigreen,
+    innertopmargin=10pt,
+    innerbottommargin=10pt,
+    innerrightmargin=10pt,
+    innerleftmargin=10pt,
+    skipabove=10pt,
+    skipbelow=10pt
+}
+
+\mdfdefinestyle{konzept}{
+    backgroundcolor=cardyellow,
+    roundcorner=5pt,
+    linewidth=1pt,
+    linecolor=orange,
+    innertopmargin=10pt,
+    innerbottommargin=10pt,
+    innerrightmargin=10pt,
+    innerleftmargin=10pt,
+    skipabove=10pt,
+    skipbelow=10pt
+}
+
+\mdfdefinestyle{warnung}{
+    backgroundcolor=cardred,
+    roundcorner=5pt,
+    linewidth=1pt,
+    linecolor=red,
+    innertopmargin=10pt,
+    innerbottommargin=10pt,
+    innerrightmargin=10pt,
+    innerleftmargin=10pt,
+    skipabove=10pt,
+    skipbelow=10pt
+}
+
+\mdfdefinestyle{glossar}{
+    backgroundcolor=cardpurple,
+    roundcorner=5pt,
+    linewidth=1pt,
+    linecolor=purple,
+    innertopmargin=10pt,
+    innerbottommargin=10pt,
+    innerrightmargin=10pt,
+    innerleftmargin=10pt,
+    skipabove=10pt,
+    skipbelow=10pt
+}
+
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}
+{\LARGE\bfseries\color{mpigreen} Flashcards: MINFLUX ML Presentation}\\[5pt]
+{\large Luca J. Bolz | Monday}
+\end{center}
+
+\vspace{0.5cm}
+
+% ==========================================
+\section*{GLOSSARY - TECHNICAL TERMS}
+% ==========================================
+
+\begin{mdframed}[style=glossar]
+\textbf{MINFLUX}\\[3pt]
+\textit{MINimal photon FLUXes} - Super-resolution microscopy technique by Stefan Hell (Nobel Prize 2014).\\
+Uses a donut-shaped laser beam to localize fluorescent molecules with nanometer precision.\\
+Key principle: Minimum fluorescence = molecule is at the donut center (dark spot).
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{MLE - Maximum Likelihood Estimation}\\[3pt]
+Statistical method to find the most probable value given observed data.\\
+\textit{How it works:} Iteratively adjusts parameters until the probability of observing your data is maximized.\\
+\textit{Problem:} Iterative = slow (1-10 ms), variable runtime depending on convergence.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{XGBoost - eXtreme Gradient Boosting}\\[3pt]
+Machine learning algorithm that builds many decision trees sequentially.\\
+\textit{How it works:} Each tree corrects the errors of the previous ones. Final prediction = sum of all trees.\\
+\textit{Why good for us:} Fast inference (0.2ms), works well with tabular data, no GPU needed.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Feature}\\[3pt]
+A number (input) that you give to a ML model so it can make a prediction.\\
+\textit{Analogy:} To predict a person's weight, features could be: height, age, gender.\\
+\textit{Our case:} 15 features including photon ratios, beam positions, modulation depth.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{RMSE - Root Mean Square Error}\\[3pt]
+Measures how far predictions are from true values on average.\\
+$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(\hat{y}_i - y_i)^2}$$
+\textit{Interpretation:} Our RMSE = 3.2nm means predictions are typically 3.2nm off from truth.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Bias}\\[3pt]
+Systematic error - does the model consistently over- or underestimate?\\
+\textit{Our results:} +0.8nm at 15nm (overestimates), -2.6nm at 30nm (underestimates).\\
+\textit{Cause:} Regression to the mean - model pulls predictions toward training center.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{PSF - Point Spread Function}\\[3pt]
+How a point source (single molecule) appears in the microscope image.\\
+\textit{For MINFLUX:} The donut beam creates a PSF with a dark center and bright ring.\\
+\textit{Why important:} PSF shape determines how much information you get about position.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Fisher Information}\\[3pt]
+Measures ``how much information'' a measurement contains about a parameter.\\
+$$I(\theta) \propto \left(\frac{\partial \text{PSF}}{\partial r}\right)^2$$
+\textit{Key insight:} Steeper PSF slope = more information = better precision.\\
+\textit{For MINFLUX:} 15nm (steep slope) has higher Fisher Info than 30nm (flat slope).
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Cram\'er-Rao Bound (CRB)}\\[3pt]
+Theoretical lower limit for the variance of ANY estimator.\\
+$$\sigma \geq \frac{1}{\sqrt{I(\theta)}}$$
+\textit{Meaning:} No estimator (MLE, ML, anything) can be more precise than CRB!\\
+\textit{For MINFLUX:} $\sigma \propto \frac{L}{\sqrt{N}}$ where L = beam size, N = photon count.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{MAPIE - Model Agnostic Prediction Interval Estimator}\\[3pt]
+Method to get confidence intervals for ML predictions.\\
+\textit{How it works:} Uses conformal prediction - looks at errors on calibration set, applies to new predictions.\\
+\textit{Output:} ``90\% confidence: true value is between 18-22nm''\\
+\textit{Benefit:} Works with any model, no distributional assumptions needed.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Conformal Prediction}\\[3pt]
+Statistical framework for uncertainty quantification.\\
+\textit{How it works:} 1) Measure errors on held-out data. 2) Use error distribution to create intervals.\\
+\textit{Guarantee:} If you want 90\% coverage, you get exactly 90\% coverage on new data.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{SNR - Signal-to-Noise Ratio}\\[3pt]
+How much signal (useful information) vs noise (random variation).\\
+$$\text{SNR} \propto \sqrt{N_{\text{photons}}}$$
+\textit{Meaning:} More photons = better SNR = more precise measurement.\\
+\textit{Our feature:} Log(total photons) is a proxy for SNR.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Donut Beam}\\[3pt]
+Laser beam with a dark center and bright ring (like a donut).\\
+\textit{Created by:} Vortex phase plate that adds helical phase to the beam.\\
+\textit{Why useful:} Molecule at center emits no light (minimum). Small movements create large signal changes.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Fluorophore / Fluorescent Molecule}\\[3pt]
+Molecule that absorbs light and re-emits it at longer wavelength.\\
+\textit{How it works:} Absorbs photon $\rightarrow$ excited state $\rightarrow$ emits photon (fluorescence).\\
+\textit{In MINFLUX:} We track the position of fluorophores attached to biological structures.
+\end{mdframed}
+
+\begin{mdframed}[style=glossar]
+\textbf{Photon}\\[3pt]
+A single particle of light. The fundamental unit we detect.\\
+\textit{Why important:} Fluorescence microscopy is photon-limited - we count individual photons.\\
+\textit{Our data:} $\sim$200 photons per measurement (very few! hence ``minimal photon fluxes'').
+\end{mdframed}
+
+\newpage
+
+% ==========================================
+\section*{THE 15 FEATURES - EXPLAINED}
+% ==========================================
+
+\begin{mdframed}[style=konzept]
+\textbf{WHAT IS A FEATURE?}\\[5pt]
+A feature is a \textbf{number you feed to the model} so it can make a prediction.
+
+\textit{Analogy:} You want to estimate a person's weight.
+\begin{itemize}[leftmargin=*, nosep]
+    \item Features could be: height, age, gender, waist circumference
+    \item Model learns: ``If height=180cm and age=25, then probably $\sim$75kg''
+\end{itemize}
+
+\textit{Our case:} You want to estimate the \textbf{distance between two fluorophores}.
+\begin{itemize}[leftmargin=*, nosep]
+    \item Features: photon counts, beam positions, contrast measures
+    \item Model learns: ``If photon\_ratio\_X0=0.15 and mod\_depth=high, then probably $\sim$15nm''
+\end{itemize}
+\end{mdframed}
+
+\vspace{0.3cm}
+
+\begin{mdframed}[style=konzept]
+\textbf{FEATURE GROUP 1: PHOTON RATIOS (6 features)}\\[5pt]
+\textit{What is it?}\\
+How many photons were detected at each beam position, \textbf{divided by total}.
+
+\textit{The 6 positions:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item \textbf{X$^-$, X$^0$, X$^+$} = Left, Center, Right (in X-direction)
+    \item \textbf{Y$^-$, Y$^0$, Y$^+$} = Bottom, Center, Top (in Y-direction)
+\end{itemize}
+
+\textit{Formula:}
+$$r_i = \frac{N_i}{N_{\text{total}}} \quad \text{e.g. } r_{X^0} = \frac{N_{X^0}}{N_{X^-} + N_{X^0} + N_{X^+} + N_{Y^-} + N_{Y^0} + N_{Y^+}}$$
+
+\textit{Why normalize?}\\
+$\rightarrow$ Invariant to brightness! Whether fluorophore is bright or dim, the \textbf{ratio} stays the same.
+
+\textit{Example:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Bright molecule: 100, 20, 100 photons $\rightarrow$ Ratios: 0.45, 0.09, 0.45
+    \item Dim molecule: 50, 10, 50 photons $\rightarrow$ Ratios: 0.45, 0.09, 0.45 (SAME!)
+\end{itemize}
+\end{mdframed}
+
+\vspace{0.3cm}
+
+\begin{mdframed}[style=konzept]
+\textbf{FEATURE GROUP 2: BEAM POSITIONS (6 features)}\\[5pt]
+\textit{What is it?}\\
+The \textbf{spatial coordinates} of the 6 beam positions (where the laser was aimed).
+
+\textit{Why important?}\\
+MINFLUX scans with different beam patterns. The position tells the model ``how far was the laser from the center?''
+
+\textit{Normalization (IMPORTANT!):}
+$$p_i^{\text{norm}} = \frac{p_i - \mu_{\text{train}}}{\sigma_{\text{train}}}$$
+
+\begin{itemize}[leftmargin=*, nosep]
+    \item $\mu_{\text{train}}$ = mean over ALL training data
+    \item $\sigma_{\text{train}}$ = standard deviation over ALL training data
+    \item DO NOT normalize per sample! Otherwise information is lost.
+\end{itemize}
+\end{mdframed}
+
+\vspace{0.3cm}
+
+\begin{mdframed}[style=konzept]
+\textbf{FEATURE GROUP 3: MODULATION DEPTH (2 features)}\\[5pt]
+\textit{What is it?}\\
+Measures the \textbf{contrast} between center and sides of the donut beam.
+
+\textit{Formula:}
+$$\text{mod}_x = N(X^-) + N(X^+) - 2 \cdot N(X^0)$$
+$$\text{mod}_y = N(Y^-) + N(Y^+) - 2 \cdot N(Y^0)$$
+
+\textit{Intuition with donut beam:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Donut = ring of light with dark center
+    \item \textbf{X$^0$} = donut hole $\rightarrow$ low signal
+    \item \textbf{X$^-$, X$^+$} = donut ring $\rightarrow$ high signal
+\end{itemize}
+
+\textit{What does the value mean?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item \textbf{High mod\_depth} = Large difference between center and sides = molecule well centered
+    \item \textbf{Low mod\_depth} = Little difference = molecule shifted
+\end{itemize}
+
+\textit{Example:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Well centered: $N(X^-)=100, N(X^0)=20, N(X^+)=100$ $\rightarrow$ mod = 100+100-40 = \textbf{160}
+    \item Shifted: $N(X^-)=60, N(X^0)=50, N(X^+)=70$ $\rightarrow$ mod = 60+70-100 = \textbf{30}
+\end{itemize}
+\end{mdframed}
+
+\vspace{0.3cm}
+
+\begin{mdframed}[style=konzept]
+\textbf{FEATURE GROUP 4: LOG TOTAL PHOTONS (1 feature)}\\[5pt]
+\textit{What is it?}\\
+The \textbf{logarithm} of the total number of detected photons.
+
+\textit{Formula:}
+$$f_{\text{SNR}} = \log(N_{\text{total}}) = \log(N_{X^-} + N_{X^0} + N_{X^+} + N_{Y^-} + N_{Y^0} + N_{Y^+})$$
+
+\textit{Why logarithm?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Photon counts can vary widely (10 to 10000)
+    \item Log compresses the range $\rightarrow$ model can work better with it
+    \item log(100) = 4.6, log(1000) = 6.9 (instead of 100 vs 1000)
+\end{itemize}
+
+\textit{Why important?}\\
+$\rightarrow$ \textbf{Proxy for Signal-to-Noise Ratio (SNR)}
+\begin{itemize}[leftmargin=*, nosep]
+    \item More photons = better signal = more precise measurement
+    \item Model learns: ``With few photons I am more uncertain''
+\end{itemize}
+\end{mdframed}
+
+\vspace{0.5cm}
+
+\begin{center}
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Feature Group} & \textbf{Count} & \textbf{Purpose} \\
+\hline
+Photon Ratios & 6 & Where is the signal? (normalized) \\
+Beam Positions & 6 & Where was the laser? \\
+Modulation Depth & 2 & How well centered? (contrast) \\
+Log Total Photons & 1 & How much signal? (SNR) \\
+\hline
+\textbf{TOTAL} & \textbf{15} & \\
+\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+% ==========================================
+\section*{SLIDE-BY-SLIDE}
+% ==========================================
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 1: Title}\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Short greeting
+    \item ``Today I present my bachelor thesis on Machine Learning for MINFLUX Distance Estimation''
+    \item ``Goal: Faster alternative to MLE''
+\end{itemize}
+\textit{Time: 30 seconds}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 2: The MLE Bottleneck}\\[5pt]
+\textit{Core message:} MLE is the current standard, but slow (1-10ms)\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``MLE is iterative optimization - needs multiple steps until convergence''
+    \item ``1-10ms sounds fast, but limits high-throughput applications''
+    \item ``Goal: Real-time distance tracking with comparable accuracy''
+\end{itemize}
+\textit{Time: 1 minute}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 3: The Solution}\\[5pt]
+\textit{Core message:} XGBoost with 15 physics-informed features\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``XGBoost = Gradient Boosting, ensemble of 500 decision trees''
+    \item ``15 features, all physically motivated:''
+    \item ``Photon ratios - normalized, invariant to brightness''
+    \item ``Modulation depth - measures contrast between center and side beams''
+    \item ``Log photons - proxy for signal-to-noise''
+    \item ``Training on Hensel et al. Nature Physics 2024 simulation data''
+    \item ``Balanced: 25k samples per distance''
+\end{itemize}
+\textit{Time: 1.5 minutes}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 4: Results}\\[5pt]
+\textit{Core message:} 5-50x speedup, 3.2nm RMSE\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``Left: Speed - 0.2ms vs 1-10ms, so 5-50x faster''
+    \item ``Right: Accuracy - RMSE increases with distance (1.7 $\rightarrow$ 3.1 $\rightarrow$ 4.2nm)''
+    \item ``This is physically expected - I'll explain why''
+    \item ``Systematic bias: slightly positive at small, negative at large distances''
+    \item ``Plus: MAPIE for uncertainty quantification - 90\% confidence intervals''
+\end{itemize}
+\textit{Time: 1.5 minutes}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 5: Throughput Comparison}\\[5pt]
+\textit{Core message:} Visualization of the speedup\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``In the time MLE estimates 1 distance...''
+    \item ``...XGBoost can do 50 estimations''
+    \item ``This enables real-time feedback during experiments''
+    \item ``Important: This is upper bound (assuming 10ms MLE)''
+\end{itemize}
+\textit{Time: 45 seconds}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 6: Why It Works}\\[5pt]
+\textit{Core message:} Model learns MINFLUX physics\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``Precision follows Fisher Information''
+    \item ``15nm: Steep PSF slope $\rightarrow$ high Fisher Info $\rightarrow$ low RMSE''
+    \item ``30nm: Flat PSF slope $\rightarrow$ low Fisher Info $\rightarrow$ higher RMSE''
+    \item ``Consistent with Cram\'er-Rao: $\sigma \propto L/\sqrt{N}$''
+    \item ``Key insight: Model learned physics WITHOUT explicit constraints''
+\end{itemize}
+\textit{Time: 1 minute}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 7: Limitations}\\[5pt]
+\textit{Core message:} Be honest about limitations\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``Training only on simulations, not experimentally validated''
+    \item ``Only 3 distances: 15, 20, 30nm''
+    \item ``Only one photon budget ($\sim$200 photons)''
+    \item ``MLE timing from literature, not measured ourselves''
+    \item ``Next step: DNA nanoruler validation''
+\end{itemize}
+\textit{Time: 1 minute}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 8: Future Work}\\[5pt]
+\textit{Core message:} Roadmap for further work\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``1. Experimental validation with DNA nanorulers''
+    \item ``2. Integration into real-time acquisition pipeline''
+    \item ``3. Extensions: 3D, variable photon budgets, transfer learning''
+\end{itemize}
+\textit{Time: 45 seconds}
+\end{mdframed}
+
+\begin{mdframed}[style=karte]
+\textbf{SLIDE 9: Summary}\\[5pt]
+\textit{Core message:} Take-home messages\\[5pt]
+\textit{What to say:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item ``5-50x speedup''
+    \item ``3.2nm RMSE - comparable accuracy''
+    \item ``Model learns physics''
+    \item ``Uncertainty quantification with MAPIE''
+    \item ``Enables real-time MINFLUX distance tracking''
+    \item ``Thank you! Questions?''
+\end{itemize}
+\textit{Time: 45 seconds}
+\end{mdframed}
+
+\newpage
+
+% ==========================================
+\section*{CONCEPT CARDS}
+% ==========================================
+
+\begin{mdframed}[style=konzept]
+\textbf{CONCEPT: Fisher Information}\\[5pt]
+\textit{What is it?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Measure for ``how much information'' a measurement contains about a parameter
+    \item Formula: $I(\theta) \propto \left(\frac{\partial \text{PSF}}{\partial r}\right)^2$
+    \item The steeper the PSF slope, the more information
+\end{itemize}
+\textit{Why relevant?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item 15nm: Molecule closer to donut center $\rightarrow$ steep slope $\rightarrow$ high Fisher Info $\rightarrow$ more precise
+    \item 30nm: Molecule further away $\rightarrow$ flat slope $\rightarrow$ low Fisher Info $\rightarrow$ less precise
+    \item Our RMSE trend (1.7 $\rightarrow$ 3.1 $\rightarrow$ 4.2nm) follows exactly this principle!
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=konzept]
+\textbf{CONCEPT: Cram\'er-Rao Bound}\\[5pt]
+\textit{What is it?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Theoretical LOWER bound for the variance of any estimator
+    \item $\sigma \geq \frac{1}{\sqrt{I(\theta)}}$
+    \item No estimator can be better than CRB!
+\end{itemize}
+\textit{For MINFLUX:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item $\sigma \propto \frac{L}{\sqrt{N}}$
+    \item L = beam size, N = photon count
+    \item More photons $\rightarrow$ better, larger beam $\rightarrow$ worse
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=konzept]
+\textbf{CONCEPT: Why Training Statistics for Normalization?}\\[5pt]
+\textit{WRONG (per-sample):}
+\begin{itemize}[leftmargin=*, nosep]
+    \item pos\_norm = (pos - pos.mean()) / pos.std()
+    \item Each measurement centered at 0 $\rightarrow$ information about absolute position LOST!
+\end{itemize}
+\textit{CORRECT (training statistics):}
+\begin{itemize}[leftmargin=*, nosep]
+    \item train\_mean = mean over ALL training data
+    \item pos\_norm = (pos - train\_mean) / train\_std
+    \item Keeps information: ``is this position large or small relative to training?''
+\end{itemize}
+\textit{Analogy:} Height - compare to average of ALL people, not just yourself!
+\end{mdframed}
+
+\begin{mdframed}[style=konzept]
+\textbf{CONCEPT: XGBoost Basics}\\[5pt]
+\textit{What is it?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item eXtreme Gradient Boosting
+    \item Ensemble of many decision trees (for us: 500)
+    \item Each tree corrects errors of previous ones
+\end{itemize}
+\textit{Why XGBoost instead of Neural Network?}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Faster to train
+    \item Needs less data
+    \item Interpretable (feature importances)
+    \item No GPU needed
+    \item State-of-the-art for tabular data
+\end{itemize}
+\end{mdframed}
+
+\newpage
+
+% ==========================================
+\section*{Q\&A CARDS}
+% ==========================================
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Why only simulated data?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Proof-of-concept study
+    \item Hensel et al. Nature Physics 2024 - high-quality simulations
+    \item Experimental validation is the logical next step
+    \item DNA nanorulers (6-90nm) planned
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``MLE is fast enough, isn't it?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item 1-10ms is variable - ML is constant 0.2ms
+    \item Deterministic = predictable latency for real-time
+    \item 50x throughput at upper bound
+    \item Trivially parallelizable (batch processing)
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Does it work outside 15-30nm?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Not tested
+    \item XGBoost does regression, could interpolate
+    \item Extrapolation (outside training range) is risky
+    \item Would need to validate or train on more distances
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``How does MAPIE compare to Cram\'er-Rao?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item CRB = theoretical lower bound (``best possible'')
+    \item MAPIE = practical intervals for individual predictions
+    \item Complementary: CRB shows physical limits, MAPIE shows quality of individual measurements
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Multi-emitter scenarios?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Not tested
+    \item Training only on single emitter
+    \item With two emitters $\rightarrow$ model would predict average (wrong)
+    \item Would need new model design
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Robustness with different setup?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Different PSF parameters: not tested
+    \item Different noise levels: not systematically tested
+    \item Probably need transfer learning or retraining
+    \item Important for experimental validation
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Is 0.2ms including feature extraction?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item No, inference only
+    \item Feature extraction: $\sim$0.1ms (just arithmetic)
+    \item Total: $\sim$0.3ms
+    \item Still much faster than MLE
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Why systematic bias at the boundaries?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Regression to the mean effect
+    \item At 15nm: can only overestimate $\rightarrow$ positive bias
+    \item At 30nm: can only underestimate $\rightarrow$ negative bias
+    \item More training distances would help
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``Why XGBoost and not Neural Networks?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item XGBoost is state-of-the-art for tabular data
+    \item Faster training, less data needed
+    \item Interpretable (feature importances)
+    \item No GPU required
+    \item Neural networks better for images/sequences, not for 15 numbers
+\end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=warnung]
+\textbf{Q: ``How did you choose the features?''}\\[5pt]
+\textit{Answer:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Physics-informed design
+    \item Photon ratios: normalized for brightness invariance
+    \item Modulation depth: measures contrast (like Fourier component)
+    \item Log photons: SNR proxy
+    \item No systematic feature selection, but all have physical meaning
+\end{itemize}
+\end{mdframed}
+
+\vspace{1cm}
+
+\begin{center}
+\fbox{\parbox{0.8\textwidth}{\centering
+\textbf{IMPORTANT: It is OKAY to say:}\\[5pt]
+``We haven't tested that''\\
+``Good question, would need to investigate''\\
+``That's a limitation of this work''
+}}
+\end{center}
+
+\end{document}

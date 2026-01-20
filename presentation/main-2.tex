@@ -1,0 +1,461 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+
+% Clean, modern look
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[circle]
+
+% Custom footline with name, institution, and page number
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,left]{author in head/foot}%
+    \hspace*{2ex}Luca J. Bolz
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+    MPI Multidisciplinary Sciences
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+    \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% Packages
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{xcolor}
+
+% Colors
+\definecolor{mpigreen}{RGB}{0,100,60}
+\setbeamercolor{structure}{fg=mpigreen}
+\setbeamercolor{title}{fg=white,bg=mpigreen}
+\setbeamercolor{frametitle}{fg=white,bg=mpigreen}
+\setbeamercolor{framesubtitle}{fg=white}
+
+% Title info
+\title{Machine Learning for MINFLUX Distance Estimation}
+\subtitle{Fast, Accurate Distance Estimation with XGBoost}
+\author{Luca J. Bolz}
+\institute{
+    Max Planck Institute for Multidisciplinary Sciences\\
+    Kiel University
+}
+\date{15th of January 2026}
+
+% Logo (add your MPI logo file as mpi_logo.png or mpi_logo.pdf)
+% Uncomment when logo is available:
+% \logo{\includegraphics[height=0.8cm]{mpi_logo.png}}
+
+\begin{document}
+
+% ============================================
+% SLIDE 1: Title
+% ============================================
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ============================================
+% SLIDE 2: What We Measure
+% ============================================
+\begin{frame}{What We Measure}
+
+    \textbf{Goal:} Distance $d$ between two fluorophores
+
+    \vspace{0.8cm}
+
+    \centering
+    \begin{Large}
+        [Fluorophore A] \hspace{0.5cm} $\xleftrightarrow{\hspace{1cm} d \hspace{1cm}}$ \hspace{0.5cm} [Fluorophore B]
+    \end{Large}
+
+    \vspace{1cm}
+
+    \raggedright
+    \textbf{How:}
+    \begin{itemize}
+        \item Excitation beam with intensity minimum (donut)
+        \item Scan 6 positions: $X^-$, $X^0$, $X^+$, $Y^-$, $Y^0$, $Y^+$
+        \item Photon count at minimum $\rightarrow$ position information
+        \item Less signal = closer to minimum = better localization
+    \end{itemize}
+
+\end{frame}
+
+% ============================================
+% SLIDE 3: The Problem
+% ============================================
+\begin{frame}{The MLE Bottleneck}
+
+    \textbf{Current approach: Maximum Likelihood Estimation (MLE)}
+    \begin{itemize}
+        \item Iterative: guess position $\rightarrow$ compute likelihood $\rightarrow$ update $\rightarrow$ repeat
+        \item Requires 10--100 iterations until convergence
+        \item $\sim$1--10 ms per estimation (implementation-dependent)
+    \end{itemize}
+
+    \vspace{0.8cm}
+
+    \textbf{Problem:} Too slow for real-time tracking of molecular dynamics
+
+    \vspace{0.5cm}
+
+    \textbf{Goal:} Enable real-time distance estimation with comparable accuracy
+
+\end{frame}
+
+% ============================================
+% SLIDE 3: The Solution
+% ============================================
+\begin{frame}{The Solution: XGBoost}
+
+    \textbf{What is XGBoost?}
+    \begin{itemize}
+        \item Ensemble of 500 decision trees
+        \item Each tree: simple if/else rules on features
+        \item \textbf{Boosting:} each tree corrects errors of previous trees
+        \item Final prediction = sum of all tree outputs
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \textbf{Why XGBoost?}
+    \begin{itemize}
+        \item Fast inference: just 500 $\times$ (compare $\rightarrow$ go left/right)
+        \item No iterative optimization needed
+        \item Learns non-linear relationships from data
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \textbf{Training:}
+    \begin{itemize}
+        \item 75k samples (balanced: 25k per distance class)
+        \item Data source: Hensel et al. \textit{Nature Physics} 2024 (simulated)
+    \end{itemize}
+
+\end{frame}
+
+% ============================================
+% SLIDE 5: Features
+% ============================================
+\begin{frame}{Input Features (15)}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Photon ratios (6)}
+            \begin{itemize}
+                \item $n_i / N_{total}$ for each position
+                \item Normalized $\rightarrow$ brightness-invariant
+            \end{itemize}
+
+            \vspace{0.4cm}
+
+            \textbf{Beam positions (6)}
+            \begin{itemize}
+                \item Normalized coordinates
+                \item Where was the donut centered?
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Modulation depth (2)}
+            \begin{equation*}
+                \text{mod}_x = n_{X^-} + n_{X^+} - 2 \cdot n_{X^0}
+            \end{equation*}
+            \begin{itemize}
+                \item Measures signal contrast
+                \item High $\rightarrow$ molecule off-center
+            \end{itemize}
+
+            \vspace{0.4cm}
+
+            \textbf{Log total photons (1)}
+            \begin{itemize}
+                \item $\log(N_{total})$
+                \item Proxy for signal-to-noise ratio
+            \end{itemize}
+        \end{column}
+    \end{columns}
+
+\end{frame}
+
+% ============================================
+% SLIDE 4: Results - Performance
+% ============================================
+\begin{frame}{Results}
+
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Speed}
+            \vspace{0.3cm}
+
+            \begin{tabular}{lcc}
+                \toprule
+                Metric & MLE & XGBoost \\
+                \midrule
+                Inference Time & 1--10 ms* & 0.2 ms \\
+                \textbf{Speedup} & 1$\times$ & \textbf{5--50$\times$} \\
+                \bottomrule
+            \end{tabular}
+
+            \vspace{0.3cm}
+            {\footnotesize *Literature estimate (Balzarotti et al. 2017)}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \textbf{Accuracy}
+            \vspace{0.3cm}
+
+            \begin{tabular}{lcc}
+                \toprule
+                Distance & RMSE & Bias \\
+                \midrule
+                15 nm & 1.7 nm & +0.8 nm \\
+                20 nm & 3.1 nm & +1.3 nm \\
+                30 nm & 4.2 nm & $-$2.6 nm \\
+                \midrule
+                \textbf{Overall} & \textbf{3.2 nm} & -- \\
+                \bottomrule
+            \end{tabular}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.5cm}
+
+    \textbf{Uncertainty Quantification (MAPIE):}
+    \begin{itemize}
+        \item 90\% confidence intervals for each prediction
+        \item Quantifies prediction reliability in real-time
+    \end{itemize}
+
+\end{frame}
+
+% ============================================
+% SLIDE 5: Throughput Comparison
+% ============================================
+\begin{frame}{Throughput Comparison}
+
+    \centering
+
+    \textbf{In the time MLE processes 1 distance...}
+
+    \vspace{0.8cm}
+
+    \begin{columns}[c]
+        \begin{column}{0.45\textwidth}
+            \centering
+            {\Large\textbf{MLE}}
+
+            \vspace{0.5cm}
+
+            {\Huge 1}
+
+            \vspace{0.3cm}
+
+            {\footnotesize estimation}
+
+            \vspace{0.3cm}
+
+            {\small (10 ms)}
+        \end{column}
+
+        \begin{column}{0.1\textwidth}
+            \centering
+            {\Huge$\rightarrow$}
+        \end{column}
+
+        \begin{column}{0.45\textwidth}
+            \centering
+            {\Large\textbf{XGBoost}}
+
+            \vspace{0.5cm}
+
+            {\Huge 50}
+
+            \vspace{0.3cm}
+
+            {\footnotesize estimations}
+
+            \vspace{0.3cm}
+
+            {\small (0.2 ms each)}
+        \end{column}
+    \end{columns}
+
+    \vspace{1cm}
+
+    {\footnotesize Assuming 10 ms MLE inference time (upper bound estimate)}
+
+\end{frame}
+
+% ============================================
+% SLIDE 6: Why It Works
+% ============================================
+\begin{frame}{Why It Works}
+
+    \textbf{Precision follows Fisher Information:}
+    \begin{itemize}
+        \item 15 nm: Steeper PSF slope $\rightarrow$ higher Fisher Information $\rightarrow$ lower RMSE (1.7 nm)
+        \item 30 nm: Flatter PSF slope $\rightarrow$ lower Fisher Information $\rightarrow$ higher RMSE (4.2 nm)
+    \end{itemize}
+
+    \vspace{0.5cm}
+
+    \textbf{Consistent with Cramér-Rao Bound:}
+    \begin{equation*}
+        \sigma \propto \frac{L}{\sqrt{N}}
+    \end{equation*}
+
+    \vspace{0.5cm}
+
+    \textbf{Key Insight:} Model learned MINFLUX physics without explicit constraints
+
+\end{frame}
+
+% ============================================
+% SLIDE 7: Limitations
+% ============================================
+\begin{frame}{Limitations}
+    
+    \textbf{Training Data:}
+    \begin{itemize}
+        \item Only simulated data (Hensel et al. 2024)
+        \item Limited range: 15, 20, 30 nm
+        \item Single photon budget ($\sim$200 photons)
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Validation:}
+    \begin{itemize}
+        \item No experimental validation yet
+        \item Systematic bias at boundaries
+        \item MLE timing based on literature estimates
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Next Step:} Validation with experimental data
+    
+\end{frame}
+
+% ============================================
+% SLIDE 8: Future Work
+% ============================================
+\begin{frame}{Future Work}
+    
+    \begin{enumerate}
+        \item \textbf{Experimental Validation}
+        \begin{itemize}
+            \item Test on real MINFLUX measurements
+            \item Compare against MLE results
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \item \textbf{Pipeline Integration}
+        \begin{itemize}
+            \item Real-time acquisition system
+            \item Live feedback during experiments
+        \end{itemize}
+        
+        \vspace{0.3cm}
+        
+        \item \textbf{Extensions}
+        \begin{itemize}
+            \item 3D localization (currently 2D only)
+            \item Multiple photon budgets
+            \item Transfer learning to experimental data
+        \end{itemize}
+    \end{enumerate}
+    
+\end{frame}
+
+% ============================================
+% SLIDE 9: Summary
+% ============================================
+\begin{frame}{Summary}
+    
+    \begin{itemize}
+        \item[\checkmark] \textbf{5--50$\times$ speedup} (1--10 ms $\rightarrow$ 0.2 ms)
+        \item[\checkmark] \textbf{3.2 nm RMSE} (comparable accuracy)
+        \item[\checkmark] \textbf{Learned physical principles} (Fisher Information)
+        \item[\checkmark] \textbf{Uncertainty quantification} with MAPIE
+    \end{itemize}
+    
+    \vspace{0.8cm}
+    
+    \centering
+    {\Large Removes computational bottleneck for MINFLUX distance estimation}
+    
+    \vspace{1cm}
+    
+    {\Large\textbf{Thank you!}}
+    
+    \vspace{0.3cm}
+    
+    {\large Questions?}
+    
+\end{frame}
+
+% ============================================
+% BACKUP SLIDES
+% ============================================
+\appendix
+
+\begin{frame}{Backup: Feature Engineering Details}
+    
+    \textbf{Photon ratios:}
+    \begin{itemize}
+        \item Normalized by total photons
+        \item Invariant to brightness variations
+    \end{itemize}
+    
+    \vspace{0.3cm}
+    
+    \textbf{Modulation depth:}
+    \begin{equation*}
+        \text{mod}_x = N(X^-) + N(X^+) - 2 \cdot N(X^0)
+    \end{equation*}
+    
+    \vspace{0.3cm}
+    
+    \textbf{Normalized positions:}
+    \begin{itemize}
+        \item Uses training statistics (not per-sample!)
+        \item Critical for generalization
+    \end{itemize}
+    
+\end{frame}
+
+\begin{frame}{Backup: Training Details}
+    
+    \textbf{Data:}
+    \begin{itemize}
+        \item Source: Hensel et al. \textit{Nature Physics} 2024
+        \item Balanced sampling: 25k per distance (15/20/30 nm)
+        \item Train/test split: 80/20
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \textbf{Hyperparameters:}
+    \begin{itemize}
+        \item n\_estimators: 500
+        \item max\_depth: 6
+        \item learning\_rate: 0.1
+        \item subsample: 0.8
+    \end{itemize}
+    
+    \vspace{0.3cm}
+    
+    \textbf{Training time:} $\sim$2 minutes on CPU
+    
+\end{frame}
+
+\end{document}

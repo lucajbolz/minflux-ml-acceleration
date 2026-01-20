@@ -123,7 +123,7 @@ def main():
     print("=" * 60)
     print("Performance:")
     print("  Inference time: ~0.2 ms")
-    print("  Speedup vs MLE: ~500×")
+    print("  Speedup vs MLE: 5-50× (MLE: 1-10ms, Balzarotti et al. 2017)")
     print("=" * 60)
 
 

@@ -14,9 +14,9 @@ Usage:
     distance, lower, upper = estimator.predict(photons, positions)
 
 Performance:
-    - RMSE: 3.2nm (vs MLE: 4.24nm)
-    - Speed: 0.2ms (vs MLE: ~100ms)
-    - Speedup: 500x faster
+    - RMSE: 3.2nm
+    - Speed: 0.2ms (vs MLE: 1-10ms, implementation-dependent)
+    - Speedup: 5-50x faster (literature estimate)
     - Uncertainty: 90% confidence intervals via conformal prediction
 """
 
@@ -35,7 +35,7 @@ class MINFLUXDistanceEstimator:
     """
     ML-based MINFLUX distance estimator.
 
-    Drop-in replacement for MLE with 500x speedup.
+    Drop-in replacement for MLE with 5-50x speedup.
     Optionally provides 90% confidence intervals via conformal prediction.
 
     Attributes:
@@ -83,6 +83,10 @@ class MINFLUXDistanceEstimator:
             except FileNotFoundError:
                 print(f"Warning: MAPIE model not found at {mapie_path}")
                 print("         Run ml_uncertainty_quantification.py to calibrate UQ")
+                print("         Continuing without uncertainty quantification...")
+                self.use_uncertainty = False
+            except ModuleNotFoundError:
+                print(f"Warning: MAPIE not installed. Run: pip install mapie")
                 print("         Continuing without uncertainty quantification...")
                 self.use_uncertainty = False
 
@@ -225,10 +229,15 @@ class MINFLUXDistanceEstimator:
         _ = self.predict_batch(photons, positions)
         batch_time = (time.perf_counter() - start) / n_samples * 1000
 
+        # MLE timing estimate: 1-10ms (literature: Balzarotti et al. 2017)
+        mle_time_lower = 1.0  # ms
+        mle_time_upper = 10.0  # ms
+
         return {
             'single_inference_ms': single_time,
             'batch_inference_ms': batch_time,
-            'speedup_vs_mle': 100 / single_time,
+            'speedup_vs_mle_lower': mle_time_lower / single_time,
+            'speedup_vs_mle_upper': mle_time_upper / single_time,
             'throughput_per_sec': 1000 / single_time
         }
 
@@ -273,7 +282,7 @@ if __name__ == '__main__':
     metrics = estimator.benchmark(n_samples=100)
     print(f"   Single inference: {metrics['single_inference_ms']:.4f} ms")
     print(f"   Batch inference:  {metrics['batch_inference_ms']:.4f} ms/sample")
-    print(f"   Speedup vs MLE:   {metrics['speedup_vs_mle']:.0f}x")
+    print(f"   Speedup vs MLE:   {metrics['speedup_vs_mle_lower']:.0f}-{metrics['speedup_vs_mle_upper']:.0f}x")
     print(f"   Throughput:       {metrics['throughput_per_sec']:.0f} predictions/sec")
 
     print("\n" + "=" * 70)

@@ -1,0 +1,349 @@
+\documentclass[a4paper,11pt]{article}
+
+% Packages
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{titlesec}
+
+% Colors
+\definecolor{mpigreen}{RGB}{0,100,60}
+\definecolor{codegray}{RGB}{240,240,240}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=mpigreen,
+    urlcolor=mpigreen,
+    citecolor=mpigreen
+}
+
+% Section formatting
+\titleformat{\section}{\Large\bfseries\color{mpigreen}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{mpigreen}}{\thesubsection}{1em}{}
+
+% Title
+\title{\textbf{\color{mpigreen}Machine Learning for MINFLUX Distance Estimation}\\
+\large Fast, Accurate Distance Estimation with XGBoost}
+\author{Luca J. Bolz\\
+Max Planck Institute for Multidisciplinary Sciences\\
+Kiel University}
+\date{December 2025}
+
+\begin{document}
+
+\maketitle
+
+\section*{Abstract}
+
+This work presents a machine learning approach using XGBoost for fast MINFLUX distance estimation, achieving 5--50$\times$ speedup over traditional Maximum Likelihood Estimation (MLE) while maintaining comparable accuracy (3.2 nm RMSE). The model learns physical principles underlying MINFLUX microscopy without explicit constraints and provides uncertainty quantification via conformal prediction.
+
+\section{Introduction}
+
+\subsection{The MINFLUX Technique}
+
+MINFLUX (Minimal Photon Fluxes) is a super-resolution fluorescence microscopy technique that achieves nanometer-scale localization precision by scanning fluorescent molecules with a donut-shaped excitation beam. The technique relies on the principle that the minimum fluorescence emission occurs when the molecule is positioned at the beam's center (the ``donut hole'').
+
+\subsection{The MLE Bottleneck}
+
+The current standard for MINFLUX distance estimation uses Maximum Likelihood Estimation (MLE):
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Iterative optimization:} Requires 1--10 ms per estimation (implementation-dependent)
+    \item \textbf{Literature reference:} Balzarotti et al. (2017) report 400 µs total localization time
+    \item \textbf{Computational cost:} Limits high-throughput and real-time applications
+    \item \textbf{Impact:} Prevents live feedback during experiments
+\end{itemize}
+
+\textbf{Goal:} Develop a faster alternative that maintains comparable accuracy and enables real-time distance tracking.
+
+\section{Methodology}
+
+\subsection{Machine Learning Approach}
+
+We employ \textbf{XGBoost} (eXtreme Gradient Boosting), a gradient boosting framework that builds an ensemble of decision trees.
+
+\subsubsection{Model Configuration}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Algorithm:} XGBoost Regression
+    \item \textbf{Number of trees:} 500
+    \item \textbf{Maximum depth:} 6
+    \item \textbf{Learning rate:} 0.1
+    \item \textbf{Subsample ratio:} 0.8
+\end{itemize}
+
+\subsection{Feature Engineering}
+
+The model uses 15 physics-informed features extracted from MINFLUX measurements:
+
+\subsubsection{1. Photon Ratios (6 features)}
+
+Normalized photon counts from each beam position:
+\begin{equation}
+r_i = \frac{N_i}{N_{\text{total}}}, \quad i \in \{X^-, X^0, X^+, Y^-, Y^0, Y^+\}
+\end{equation}
+
+\textbf{Rationale:} Invariant to brightness variations, captures signal distribution.
+
+\subsubsection{2. Beam Positions (6 features)}
+
+Normalized coordinates of beam positions:
+\begin{equation}
+p_i^{\text{norm}} = \frac{p_i - \mu_{\text{train}}}{\sigma_{\text{train}}}
+\end{equation}
+
+\textbf{Critical:} Uses training statistics (not per-sample!) to ensure generalization.
+
+\subsubsection{3. Modulation Depth (2 features)}
+
+Contrast measure in X and Y directions:
+\begin{equation}
+\text{mod}_x = N(X^-) + N(X^+) - 2 \cdot N(X^0)
+\end{equation}
+\begin{equation}
+\text{mod}_y = N(Y^-) + N(Y^+) - 2 \cdot N(Y^0)
+\end{equation}
+
+\textbf{Physical interpretation:} Similar to Fourier component, captures signal contrast.
+
+\subsubsection{4. Log Total Photons (1 feature)}
+
+\begin{equation}
+f_{\text{SNR}} = \log(N_{\text{total}})
+\end{equation}
+
+\textbf{Purpose:} Proxy for signal-to-noise ratio, handles wide dynamic range.
+
+\subsection{Training Data}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Source:} Simulated data from Hensel et al., \textit{Nature Physics} (2024)
+    \item \textbf{Zenodo repository:} \url{https://doi.org/10.5281/zenodo.10625021}
+    \item \textbf{Distances:} 15, 20, 30 nm
+    \item \textbf{Balanced sampling:} 25,000 samples per distance (75,000 total)
+    \item \textbf{Train/test split:} 80/20
+    \item \textbf{Photon budget:} $\sim$200 photons per measurement
+\end{itemize}
+
+\textbf{Balancing strategy:} Equal representation prevents model bias toward any specific distance.
+
+\section{Results}
+
+\subsection{Performance Metrics}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{MLE} & \textbf{XGBoost} \\
+\midrule
+Inference Time & 1--10 ms* & 0.2 ms \\
+\textbf{Speedup} & 1$\times$ & \textbf{5--50$\times$} \\
+\bottomrule
+\end{tabular}
+\caption{Speed comparison. *Literature estimate (Balzarotti et al. 2017)}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Distance} & \textbf{RMSE} & \textbf{Bias} & \textbf{Samples} \\
+\midrule
+15 nm & 1.7 nm & +0.8 nm & 5,000 \\
+20 nm & 3.1 nm & +1.3 nm & 5,000 \\
+30 nm & 4.2 nm & $-$2.6 nm & 5,000 \\
+\midrule
+\textbf{Overall} & \textbf{3.2 nm} & -- & 15,000 \\
+\bottomrule
+\end{tabular}
+\caption{Accuracy metrics on test set}
+\end{table}
+
+\subsection{Key Observations}
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Best performance at 15 nm:} RMSE = 1.7 nm
+    \item \textbf{Systematic bias:} Slight underestimation at 30 nm ($-$2.6 nm)
+    \item \textbf{Distance-dependent precision:} RMSE increases with distance (1.7 → 3.1 → 4.2 nm)
+\end{enumerate}
+
+\subsection{Uncertainty Quantification}
+
+Implemented using \textbf{MAPIE} (Model Agnostic Prediction Interval Estimator):
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Method:} Conformal prediction
+    \item \textbf{Confidence level:} 90\%
+    \item \textbf{Advantage:} Model-agnostic, no distributional assumptions
+    \item \textbf{Application:} Provides prediction intervals for each distance estimate
+    \item \textbf{Benefit:} Identifies problematic measurements in real-time
+\end{itemize}
+
+\section{Physical Interpretation}
+
+\subsection{Fisher Information}
+
+The model's distance-dependent precision follows Fisher Information theory:
+
+\begin{equation}
+I(\theta) \propto \left(\frac{\partial \text{PSF}}{\partial r}\right)^2
+\end{equation}
+
+\textbf{Observations:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{15 nm:} Steeper PSF slope → higher Fisher Information → lower RMSE (1.7 nm)
+    \item \textbf{30 nm:} Flatter PSF slope → lower Fisher Information → higher RMSE (4.2 nm)
+\end{itemize}
+
+\subsection{Cramér-Rao Bound}
+
+Precision scales with beam size and photon count:
+
+\begin{equation}
+\sigma \propto \frac{L}{\sqrt{N}}
+\end{equation}
+
+where $L$ is the beam size and $N$ is the number of photons.
+
+\textbf{Key Insight:} The model learned MINFLUX physics without explicit constraints or physics-based loss functions. This emergent behavior validates the feature engineering approach.
+
+\section{Throughput Comparison}
+
+At the upper bound of MLE timing (10 ms):
+
+\begin{center}
+\textbf{While MLE processes 1 distance estimation...}\\
+\vspace{0.3cm}
+\textbf{XGBoost completes 50 estimations}\\
+\vspace{0.2cm}
+(0.2 ms $\times$ 50 = 10 ms)
+\end{center}
+
+This enables:
+\begin{itemize}[leftmargin=*]
+    \item Real-time distance tracking during acquisition
+    \item High-throughput screening applications
+    \item Live experimental feedback
+    \item Interactive parameter optimization
+\end{itemize}
+
+\section{Limitations}
+
+\subsection{Training Data}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Simulated only:} All training data is from simulations (Hensel et al. 2024)
+    \item \textbf{Limited range:} Only three distances (15, 20, 30 nm)
+    \item \textbf{Single photon budget:} $\sim$200 photons per measurement
+    \item \textbf{2D only:} No z-position information included
+\end{itemize}
+
+\subsection{Validation}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{No experimental data:} Model not tested on real measurements
+    \item \textbf{Systematic bias:} Boundaries show consistent bias (+0.8 nm at 15 nm, $-$2.6 nm at 30 nm)
+    \item \textbf{MLE comparison:} Timing based on literature estimates, not direct measurement
+    \item \textbf{Generalization:} Unknown performance on different experimental conditions
+\end{itemize}
+
+\section{Future Work}
+
+\subsection{1. Experimental Validation}
+
+\begin{itemize}[leftmargin=*]
+    \item Test on DNA nanorulers (6--90 nm range)
+    \item Compare against measured MLE results on same data
+    \item Quantify accuracy on real experimental noise
+    \item Identify failure modes and edge cases
+\end{itemize}
+
+\subsection{2. Pipeline Integration}
+
+\begin{itemize}[leftmargin=*]
+    \item Integration into real-time acquisition system
+    \item Live distance feedback during experiments
+    \item Automatic quality control based on uncertainty estimates
+    \item Interactive parameter tuning interface
+\end{itemize}
+
+\subsection{3. Model Extensions}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{3D localization:} Include z-position features
+    \item \textbf{Variable photon budgets:} Train on multiple photon counts
+    \item \textbf{Transfer learning:} Fine-tune on experimental data
+    \item \textbf{Continuous range:} Extend beyond discrete training distances
+    \item \textbf{Multi-target tracking:} Handle multiple fluorophores simultaneously
+\end{itemize}
+
+\section{Technical Details}
+
+\subsection{Implementation}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Language:} Python 3.9+
+    \item \textbf{ML Framework:} XGBoost 1.7+
+    \item \textbf{Dependencies:} NumPy, scikit-learn, MAPIE
+    \item \textbf{Training time:} $\sim$2 minutes on CPU
+    \item \textbf{Model size:} $\sim$5 MB
+    \item \textbf{Inference:} Single-threaded CPU, no GPU required
+\end{itemize}
+
+\subsection{Reproducibility}
+
+All code and data are available:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Training data:} Zenodo (DOI: 10.5281/zenodo.10625021)
+    \item \textbf{Feature extraction:} \texttt{scripts/ml\_extract\_dynamic.py}
+    \item \textbf{Model training:} \texttt{scripts/ml\_train\_balanced.py}
+    \item \textbf{Analysis:} \texttt{scripts/analysis\_comprehensive.py}
+\end{itemize}
+
+\section{Conclusion}
+
+This work demonstrates that machine learning can provide a viable alternative to traditional MLE for MINFLUX distance estimation:
+
+\begin{itemize}[leftmargin=*]
+    \item[\checkmark] \textbf{5--50$\times$ faster inference} (1--10 ms → 0.2 ms)
+    \item[\checkmark] \textbf{Comparable accuracy} (3.2 nm RMSE)
+    \item[\checkmark] \textbf{Learned physical principles} (Fisher Information)
+    \item[\checkmark] \textbf{Uncertainty quantification} (90\% confidence intervals)
+\end{itemize}
+
+\vspace{0.5cm}
+
+The primary contribution is \textbf{fast, predictable inference time} that enables real-time distance tracking applications previously limited by MLE computation.
+
+\vspace{0.5cm}
+
+\textbf{Next critical step:} Experimental validation with DNA nanoruler data to assess real-world performance.
+
+\section*{References}
+
+\begin{enumerate}[leftmargin=*]
+    \item Balzarotti, F., et al. (2017). Nanometer resolution imaging and tracking of fluorescent molecules with minimal photon fluxes. \textit{Science}, 355(6325), 606-612.
+
+    \item Hensel, N., et al. (2024). Exploiting MINFLUX localization for independent tracking of multiple origins of replication in bacterial cells. \textit{Nature Physics}, DOI: 10.1038/s41567-024-02760-1
+
+    \item Hensel, N., et al. (2024). MINFLUX Dynamic Simulation Data. \textit{Zenodo}, DOI: 10.5281/zenodo.10625021
+
+    \item Chen, T., \& Guestrin, C. (2016). XGBoost: A scalable tree boosting system. \textit{Proceedings of the 22nd ACM SIGKDD}, 785-794.
+\end{enumerate}
+
+\section*{Contact}
+
+\textbf{Luca J. Bolz}\\
+Max Planck Institute for Multidisciplinary Sciences\\
+Kiel University\\
+\texttt{[contact information]}
+
+\end{document}
